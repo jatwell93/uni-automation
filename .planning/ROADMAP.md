@@ -33,7 +33,15 @@
 4. User receives clear, actionable error messages if authentication fails or files are invalid (e.g., "Refresh cookies from browser", "File size suspicious—retry or check Panopto URL")
 5. System logs all actions to file with timestamps; user can trace pipeline execution
 
-**Plans:** TBD
+**Plans:** 4 plans in 2 waves
+
+**Wave 1 (Parallel):**
+- [ ] 01-01-PLAN.md — Config model + Pydantic validation (CONFIG-01, CONFIG-02, CONFIG-03, CONFIG-04)
+- [ ] 01-02-PLAN.md — Cookie auth + Panopto session validation (AUTH-01, AUTH-02, AUTH-03)
+- [ ] 01-03-PLAN.md — Video/transcript download + ffprobe validation (DOWN-01, DOWN-02, DOWN-03, PRIV-02)
+
+**Wave 2 (Depends on Wave 1):**
+- [ ] 01-04-PLAN.md — Integration, logging, security setup (PRIV-01)
 
 ---
 
@@ -98,10 +106,10 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/1 | Not started | — |
-| 2. Media Processing | 0/1 | Not started | — |
-| 3. Intelligence & Output | 0/1 | Not started | — |
-| 4. Reliability & Recovery | 0/1 | Not started | — |
+| 1. Foundation | 0/4 | Planned | — |
+| 2. Media Processing | 0/? | Not started | — |
+| 3. Intelligence & Output | 0/? | Not started | — |
+| 4. Reliability & Recovery | 0/? | Not started | — |
 
 ---
 
