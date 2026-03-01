@@ -1,0 +1,28 @@
+# config/example_week_05.yaml
+# Example configuration for processing a lecture
+
+lecture:
+  # Full URL to Panopto video viewer page
+  # Find this by navigating to the lecture in Panopto and copying the URL from your browser
+  url: "https://panopto.university.edu/Panopto/Pages/Viewer.aspx?id=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  
+  # Path to PDF slides file (must exist)
+  # Use forward slashes (/) even on Windows; pathlib handles conversion automatically
+  slide_path: "slides/week_05.pdf"
+
+paths:
+  # Path to cookies JSON file (browser export)
+  # Extract from browser: Chrome DevTools (F12) → Storage → Cookies → Select all → Copy → Save as JSON
+  # See README.md for detailed instructions
+  cookie_file: "cookies/panopto.json"
+  
+  # Directory where downloaded files will be saved
+  # Must exist and be writable; created automatically if missing
+  output_dir: "downloads/week_05"
+
+metadata:
+  # Optional fields (can be omitted; sensible defaults used)
+  course_name: "Business Analytics"
+  week_number: 5
+  lecturer_name: "Prof. Smith"
+  # timestamp: "2026-03-05 09:00"  # Optional; generated from current time if omitted
