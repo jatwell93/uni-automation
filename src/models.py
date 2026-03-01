@@ -60,6 +60,17 @@ class TranscriptInfo:
 
 
 @dataclass
+class TranscriptResult:
+    """Result of transcript processing operation."""
+
+    status: str  # "success", "missing", "error"
+    cleaned_text: Optional[str] = None
+    word_count: Optional[int] = None
+    original_word_count: Optional[int] = None
+    error_message: Optional[str] = None
+
+
+@dataclass
 class AudioExtractionResult:
     """Result of an audio extraction operation."""
 
@@ -76,5 +87,7 @@ class AudioExtractionError(Exception):
     pass
 
 
-# Alias for compatibility
-TranscriptResult = TranscriptInfo
+class TranscriptError(Exception):
+    """Exception raised when transcript processing fails."""
+
+    pass

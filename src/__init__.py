@@ -10,8 +10,15 @@ from src.models import (
     TranscriptResult,
     AudioExtractionResult,
     AudioExtractionError,
+    TranscriptError,
 )
 from src.audio_extractor import extract_audio, validate_audio_output
+from src.transcript_processor import (
+    TranscriptProcessor,
+    parse_transcript,
+    clean_transcript,
+    strip_pii,
+)
 
 __all__ = [
     "ConfigModel",
@@ -24,6 +31,11 @@ __all__ = [
     "TranscriptResult",
     "AudioExtractionResult",
     "AudioExtractionError",
+    "TranscriptError",
     "extract_audio",
     "validate_audio_output",
+    "TranscriptProcessor",
+    "parse_transcript",
+    "clean_transcript",
+    "strip_pii",
 ]
