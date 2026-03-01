@@ -1,0 +1,7 @@
+requests==2.31.0
+pydantic==2.5.0
+PyYAML==6.0.1
+pytest==7.4.3
+pytest-cov==4.1.0
+tenacity==8.2.3
+typed-ffmpeg==3.11

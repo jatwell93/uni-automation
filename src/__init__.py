@@ -8,7 +8,10 @@ from src.models import (
     ValidationResult,
     TranscriptInfo,
     TranscriptResult,
+    AudioExtractionResult,
+    AudioExtractionError,
 )
+from src.audio_extractor import extract_audio, validate_audio_output
 
 __all__ = [
     "ConfigModel",
@@ -19,4 +22,8 @@ __all__ = [
     "ValidationResult",
     "TranscriptInfo",
     "TranscriptResult",
+    "AudioExtractionResult",
+    "AudioExtractionError",
+    "extract_audio",
+    "validate_audio_output",
 ]

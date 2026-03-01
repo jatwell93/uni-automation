@@ -59,5 +59,22 @@ class TranscriptInfo:
     message: str = ""
 
 
+@dataclass
+class AudioExtractionResult:
+    """Result of an audio extraction operation."""
+
+    status: str  # "success" or "error"
+    output_path: Optional[Path] = None
+    duration: Optional[float] = None
+    file_size: Optional[int] = None
+    error_message: Optional[str] = None
+
+
+class AudioExtractionError(Exception):
+    """Exception raised when audio extraction fails."""
+
+    pass
+
+
 # Alias for compatibility
 TranscriptResult = TranscriptInfo
