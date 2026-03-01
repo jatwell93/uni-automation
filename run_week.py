@@ -56,10 +56,10 @@ def main():
 
     # Load configuration
     try:
-        print(f"🔧 Loading config from {config_file}...")
+        print(f"[*] Loading config from {config_file}...")
         config = load_config(config_file)
     except Exception as e:
-        print(f"✗ Config validation failed: {e}")
+        print(f"[!] Config validation failed: {e}")
         logger.error(f"Config validation failed: {e}", exc_info=True)
         sys.exit(1)
 
@@ -73,21 +73,21 @@ def main():
         logger.info(f"Loading cookies from {config.paths.cookie_file}...")
         cookies = load_cookies(config.paths.cookie_file)
     except Exception as e:
-        print(f"✗ Failed to load cookies: {e}")
+        print(f"[!] Failed to load cookies: {e}")
         logger.error(f"Failed to load cookies: {e}", exc_info=True)
         sys.exit(1)
 
     # Validate session
-    print(f"🔐 Testing Panopto authentication...")
+    print(f"[*] Testing Panopto authentication...")
     base_url = extract_base_url(config.lecture.url)
     session_result = validate_session(cookies, base_url)
 
     if not session_result.success:
-        print(f"✗ {session_result.message}")
+        print(f"[!] {session_result.message}")
         logger.error(f"Session validation failed: {session_result.message}")
         sys.exit(1)
 
-    print(f"{session_result.message}")
+    print(f"[+] {session_result.message}")
 
     # Download video
     output_dir = (
@@ -97,7 +97,7 @@ def main():
 
     video_output = output_dir / "video.mp4"
 
-    print(f"📥 Downloading video...")
+    print(f"[*] Downloading video...")
     download_result = download_video(
         video_url=config.lecture.url,
         output_path=video_output,
@@ -106,14 +106,14 @@ def main():
     )
 
     if not download_result.success:
-        print(f"✗ {download_result.error}")
+        print(f"[!] {download_result.error}")
         logger.error(f"Download failed: {download_result.error}")
         sys.exit(1)
 
-    print(f"✓ {download_result.message}")
+    print(f"[+] {download_result.message}")
 
     # Validate video
-    print(f"🔍 Validating video...")
+    print(f"[*] Validating video...")
     validation_result = validate_video(
         video_path=video_output,
         min_size_mb=100,
@@ -121,7 +121,7 @@ def main():
     )
 
     if not validation_result.success:
-        print(f"✗ {validation_result.error}")
+        print(f"[!] {validation_result.error}")
         logger.error(f"Validation failed: {validation_result.error}")
         # Delete video on validation failure
         try:
@@ -131,10 +131,10 @@ def main():
             logger.warning(f"Failed to delete invalid video: {e}")
         sys.exit(1)
 
-    print(f"✓ {validation_result.message}")
+    print(f"[+] {validation_result.message}")
 
     # Download transcript (optional)
-    print(f"📄 Downloading transcript...")
+    print(f"[*] Downloading transcript...")
     transcript_output = output_dir / "transcript.vtt"
     session_id = extract_session_id(config.lecture.url)
 
@@ -147,15 +147,15 @@ def main():
         )
 
         if transcript_result.success:
-            print(f"✓ {transcript_result.message}")
+            print(f"[+] {transcript_result.message}")
         else:
-            print(f"⚠ {transcript_result.message}")
+            print(f"[~] {transcript_result.message}")
     else:
-        print(f"⚠ Could not extract session ID from URL; skipping transcript")
+        print(f"[~] Could not extract session ID from URL; skipping transcript")
         logger.warning("Could not extract session ID from URL; skipping transcript")
 
     # Success summary
-    print(f"\n✓ Phase 1 complete")
+    print(f"\n[+] Phase 1 complete")
     print(f"Files:")
     print(
         f"- {video_output.relative_to(Path.cwd())} ({download_result.file_size / (1024 * 1024):.1f}MB)"
@@ -164,7 +164,7 @@ def main():
     if transcript_output.exists():
         print(f"- {transcript_output.relative_to(Path.cwd())}")
 
-    print(f"✓ Logs: {log_file.relative_to(Path.cwd())}")
+    print(f"[+] Logs: {log_file.relative_to(Path.cwd())}")
 
     logger.info("Phase 1 complete")
     return 0
