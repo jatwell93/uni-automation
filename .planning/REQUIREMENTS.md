@@ -62,10 +62,10 @@
 
 ### Configuration & CLI
 
-- [ ] **CONFIG-01**: System reads lecture config from YAML file with lecture URL, slides path, metadata
-- [ ] **CONFIG-02**: System runs from single command: `python run_week.py <config_file>`
-- [ ] **CONFIG-03**: User receives progress output at each pipeline stage
-- [ ] **CONFIG-04**: Invalid config produces clear error message (schema validation)
+- [x] **CONFIG-01**: System reads lecture config from YAML file with lecture URL, slides path, metadata
+- [x] **CONFIG-02**: System runs from single command: `python run_week.py <config_file>`
+- [x] **CONFIG-03**: User receives progress output at each pipeline stage
+- [x] **CONFIG-04**: Invalid config produces clear error message (schema validation)
 
 ### State & Recovery
 
@@ -165,10 +165,10 @@
 | OBS-02 | Phase 3 | Pending |
 | OBS-03 | Phase 3 | Pending |
 | OBS-04 | Phase 3 | Pending |
-| CONFIG-01 | Phase 1 | Pending |
-| CONFIG-02 | Phase 1 | Pending |
-| CONFIG-03 | Phase 1 | Pending |
-| CONFIG-04 | Phase 1 | Pending |
+| CONFIG-01 | Phase 1 | Complete (Plan 01-01) |
+| CONFIG-02 | Phase 1 | Complete (Plan 01-01) |
+| CONFIG-03 | Phase 1 | Complete (Plan 01-01) |
+| CONFIG-04 | Phase 1 | Complete (Plan 01-01) |
 | STATE-01 | Phase 4 | Pending |
 | STATE-02 | Phase 4 | Pending |
 | STATE-03 | Phase 4 | Pending |
