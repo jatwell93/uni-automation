@@ -408,6 +408,25 @@ class TestFullPipeline:
         assert result.status == "error"
         assert "empty" in result.error_message.lower()
 
+    def test_process_malformed_transcript(self, processor, tmp_path):
+        """Malformed transcript with mixed formats → best-effort parsing."""
+        # Create a file with corrupted/mixed format content
+        malformed_file = tmp_path / "malformed.vtt"
+        malformed_file.write_text("""WEBVTT
+
+1
+00:00:00.500 --> 00:00:07.000
+Some content here
+
+[Corrupted section]
+More text
+""")
+        result = processor.process(malformed_file)
+        # Should still succeed with partial parsing
+        assert result.status == "success"
+        assert result.cleaned_text is not None
+        assert len(result.cleaned_text) > 0
+
 
 # ============================================================================
 # INTEGRATION TESTS
