@@ -38,7 +38,7 @@
 **Wave 1 (Parallel):**
 - [ ] 01-01-PLAN.md — Config model + Pydantic validation (CONFIG-01, CONFIG-02, CONFIG-03, CONFIG-04)
 - [ ] 01-02-PLAN.md — Cookie auth + Panopto session validation (AUTH-01, AUTH-02, AUTH-03)
-- [ ] 01-03-PLAN.md — Video/transcript download + ffprobe validation (DOWN-01, DOWN-02, DOWN-03, PRIV-02)
+- [x] 01-03-PLAN.md — Video/transcript download + ffprobe validation (DOWN-01, DOWN-02, DOWN-03, PRIV-02) **COMPLETE**
 
 **Wave 2 (Depends on Wave 1):**
 - [ ] 01-04-PLAN.md — Integration, logging, security setup (PRIV-01)

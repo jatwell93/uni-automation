@@ -10,9 +10,9 @@
 - [ ] **AUTH-01**: System can load Panopto authentication cookies from config file
 - [ ] **AUTH-02**: System validates cookie freshness before download attempt (test API call succeeds)
 - [ ] **AUTH-03**: User receives clear error if cookie is invalid or expired (with recovery instructions)
-- [ ] **DOWN-01**: System downloads Panopto video file using authenticated cookie
-- [ ] **DOWN-02**: Downloaded video file is validated for integrity (file size > 0, ffprobe succeeds)
-- [ ] **DOWN-03**: Download failures produce clear error messages (partial files cleaned up)
+- [x] **DOWN-01**: System downloads Panopto video file using authenticated cookie ✓ (Plan 01-03)
+- [x] **DOWN-02**: Downloaded video file is validated for integrity (file size > 0, ffprobe succeeds) ✓ (Plan 01-03)
+- [x] **DOWN-03**: Download failures produce clear error messages (partial files cleaned up) ✓ (Plan 01-03)
 
 ### Transcript Handling
 
@@ -85,7 +85,7 @@
 ### Privacy & Security
 
 - [ ] **PRIV-01**: Panopto cookies stored in config file (encrypted or with ACL recommended)
-- [ ] **PRIV-02**: Raw media (video, audio) never uploaded to external service except Google Drive (personal account)
+- [x] **PRIV-02**: Raw media (video, audio) never uploaded to external service except Google Drive (personal account) ✓ (Plan 01-03)
 - [ ] **PRIV-03**: Only transcript + slide text sent to LLM (no video/audio binaries)
 - [ ] **PRIV-04**: Transcript checked for PII before LLM call (student names, emails stripped)
 - [ ] **PRIV-05**: Temporary files cleaned up after processing (no residual data)
@@ -134,9 +134,9 @@
 | AUTH-01 | Phase 1 | Pending |
 | AUTH-02 | Phase 1 | Pending |
 | AUTH-03 | Phase 1 | Pending |
-| DOWN-01 | Phase 1 | Pending |
-| DOWN-02 | Phase 1 | Pending |
-| DOWN-03 | Phase 1 | Pending |
+| DOWN-01 | Phase 1 | Complete (01-03) |
+| DOWN-02 | Phase 1 | Complete (01-03) |
+| DOWN-03 | Phase 1 | Complete (01-03) |
 | TRAN-01 | Phase 2 | Pending |
 | TRAN-02 | Phase 2 | Pending |
 | TRAN-03 | Phase 2 | Pending |
@@ -151,10 +151,10 @@
 | SLIDE-03 | Phase 2 | Pending |
 | SLIDE-04 | Phase 2 | Pending |
 | SLIDE-05 | Phase 2 | Pending |
-| SYNC-01 | Phase 3 | Pending |
-| SYNC-02 | Phase 3 | Pending |
-| SYNC-03 | Phase 3 | Pending |
-| SYNC-04 | Phase 3 | Pending |
+| SYNC-01 | Phase 4 | Pending |
+| SYNC-02 | Phase 4 | Pending |
+| SYNC-03 | Phase 4 | Pending |
+| SYNC-04 | Phase 4 | Pending |
 | LLM-01 | Phase 3 | Pending |
 | LLM-02 | Phase 3 | Pending |
 | LLM-03 | Phase 3 | Pending |
@@ -169,20 +169,20 @@
 | CONFIG-02 | Phase 1 | Pending |
 | CONFIG-03 | Phase 1 | Pending |
 | CONFIG-04 | Phase 1 | Pending |
-| STATE-01 | Phase 3 | Pending |
-| STATE-02 | Phase 3 | Pending |
-| STATE-03 | Phase 3 | Pending |
-| STATE-04 | Phase 3 | Pending |
-| ERR-01 | Phase 3 | Pending |
-| ERR-02 | Phase 3 | Pending |
-| ERR-03 | Phase 3 | Pending |
-| ERR-04 | Phase 3 | Pending |
-| ERR-05 | Phase 3 | Pending |
+| STATE-01 | Phase 4 | Pending |
+| STATE-02 | Phase 4 | Pending |
+| STATE-03 | Phase 4 | Pending |
+| STATE-04 | Phase 4 | Pending |
+| ERR-01 | Phase 4 | Pending |
+| ERR-02 | Phase 4 | Pending |
+| ERR-03 | Phase 4 | Pending |
+| ERR-04 | Phase 4 | Pending |
+| ERR-05 | Phase 4 | Pending |
 | PRIV-01 | Phase 1 | Pending |
-| PRIV-02 | Phase 1 | Pending |
-| PRIV-03 | Phase 3 | Pending |
-| PRIV-04 | Phase 3 | Pending |
-| PRIV-05 | Phase 3 | Pending |
+| PRIV-02 | Phase 1 | Complete (01-03) |
+| PRIV-03 | Phase 4 | Pending |
+| PRIV-04 | Phase 4 | Pending |
+| PRIV-05 | Phase 4 | Pending |
 | COST-01 | Phase 3 | Pending |
 | COST-02 | Phase 3 | Pending |
 | COST-03 | Phase 3 | Pending |
@@ -195,4 +195,5 @@
 
 ---
 *Requirements defined: 2026-03-02*
-*Last updated: 2026-03-02 after research synthesis*
+*Last updated: 2026-03-01 after Plan 01-03 completion*
+*Progress: 4/46 requirements complete (DOWN-01, DOWN-02, DOWN-03, PRIV-02)*
