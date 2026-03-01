@@ -7,6 +7,25 @@ from datetime import datetime
 
 
 @dataclass
+class SessionInfo:
+    """Information about the authenticated session."""
+
+    user_id: Optional[str] = None
+    username: Optional[str] = None
+    expires_at: Optional[str] = None
+
+
+@dataclass
+class AuthResult:
+    """Result of authentication operation."""
+
+    success: bool
+    message: str
+    session_info: Optional[SessionInfo] = None
+    expires_in_seconds: Optional[int] = None
+
+
+@dataclass
 class DownloadResult:
     """Result of a download operation."""
 

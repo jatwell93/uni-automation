@@ -82,12 +82,12 @@ def main():
     base_url = extract_base_url(config.lecture.url)
     session_result = validate_session(cookies, base_url)
 
-    if not session_result.valid:
+    if not session_result.success:
         print(f"✗ {session_result.message}")
         logger.error(f"Session validation failed: {session_result.message}")
         sys.exit(1)
 
-    print(f"✓ {session_result.message}")
+    print(f"{session_result.message}")
 
     # Download video
     output_dir = (

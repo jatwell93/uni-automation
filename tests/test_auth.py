@@ -107,6 +107,7 @@ class TestValidateSession:
         with patch("src.auth.requests.get") as mock_get:
             mock_response = Mock()
             mock_response.status_code = 200
+            mock_response.json.return_value = {"id": "user123", "name": "Test User"}
             mock_get.return_value = mock_response
 
             result = validate_session(
@@ -114,7 +115,7 @@ class TestValidateSession:
                 panopto_base_url="https://uni.panopto.com",
             )
 
-            assert result.valid is True
+            assert result.success is True
             assert "valid" in result.message.lower()
 
     def test_validate_session_unauthorized(self):
@@ -134,7 +135,7 @@ class TestValidateSession:
                 panopto_base_url="https://uni.panopto.com",
             )
 
-            assert result.valid is False
+            assert result.success is False
             assert (
                 "expired" in result.message.lower()
                 or "invalid" in result.message.lower()
@@ -157,7 +158,7 @@ class TestValidateSession:
                 panopto_base_url="https://uni.panopto.com",
             )
 
-            assert result.valid is False
+            assert result.success is False
             assert (
                 "access" in result.message.lower() or "denied" in result.message.lower()
             )
@@ -171,15 +172,77 @@ class TestValidateSession:
         cookies.set("session_id", "abc123")
 
         with patch("src.auth.requests.get") as mock_get:
+            # Strategy A times out
             mock_get.side_effect = requests.Timeout()
 
-            result = validate_session(
-                cookies=cookies,
-                panopto_base_url="https://uni.panopto.com",
-            )
+            with patch("src.auth.requests.head") as mock_head:
+                # Strategy B also times out
+                mock_head.side_effect = requests.Timeout()
 
-            assert result.valid is False
-            assert "timeout" in result.message.lower()
+                result = validate_session(
+                    cookies=cookies,
+                    panopto_base_url="https://uni.panopto.com",
+                )
+
+                assert result.success is False
+                assert (
+                    "timeout" in result.message.lower()
+                    or "not responding" in result.message.lower()
+                )
+
+    def test_validate_session_connection_error(self):
+        """Test session validation with connection error."""
+        from requests.cookies import RequestsCookieJar
+        import requests
+
+        cookies = RequestsCookieJar()
+        cookies.set("session_id", "abc123")
+
+        with patch("src.auth.requests.get") as mock_get:
+            # Strategy A connection error
+            mock_get.side_effect = requests.ConnectionError()
+
+            with patch("src.auth.requests.head") as mock_head:
+                # Strategy B also connection error
+                mock_head.side_effect = requests.ConnectionError()
+
+                result = validate_session(
+                    cookies=cookies,
+                    panopto_base_url="https://uni.panopto.com",
+                )
+
+                assert result.success is False
+                assert (
+                    "cannot reach" in result.message.lower()
+                    or "network" in result.message.lower()
+                )
+
+    def test_validate_session_strategy_b_fallback(self):
+        """Test that Strategy B fallback works when Strategy A fails."""
+        from requests.cookies import RequestsCookieJar
+
+        cookies = RequestsCookieJar()
+        cookies.set("session_id", "abc123")
+
+        with patch("src.auth.requests.get") as mock_get:
+            # Strategy A (GET) returns 500 error, trigger fallback
+            mock_response = Mock()
+            mock_response.status_code = 500
+            mock_get.return_value = mock_response
+
+            with patch("src.auth.requests.head") as mock_head:
+                # Strategy B (HEAD) succeeds with 200
+                mock_head_response = Mock()
+                mock_head_response.status_code = 200
+                mock_head.return_value = mock_head_response
+
+                result = validate_session(
+                    cookies=cookies,
+                    panopto_base_url="https://uni.panopto.com",
+                )
+
+                assert result.success is True
+                assert mock_head.called  # Verify fallback was used
 
 
 if __name__ == "__main__":

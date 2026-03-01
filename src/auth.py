@@ -2,33 +2,16 @@
 
 import json
 import logging
+import time
 from pathlib import Path
 from typing import Optional
 
 import requests
 from requests.cookies import RequestsCookieJar
 
+from src.models import AuthResult, SessionInfo
+
 logger = logging.getLogger(__name__)
-
-
-class AuthResult:
-    """Result of authentication operation."""
-
-    def __init__(self, success: bool, message: str = "", error: Optional[str] = None):
-        self.success = success
-        self.message = message
-        self.error = error
-
-
-class SessionInfo:
-    """Information about the authenticated session."""
-
-    def __init__(
-        self, valid: bool, expires_in_days: Optional[int] = None, message: str = ""
-    ):
-        self.valid = valid
-        self.expires_in_days = expires_in_days
-        self.message = message
 
 
 def load_cookies(cookie_file: str | Path) -> RequestsCookieJar:
@@ -114,25 +97,121 @@ def load_cookies(cookie_file: str | Path) -> RequestsCookieJar:
 def validate_session(
     cookies: RequestsCookieJar,
     panopto_base_url: str,
-) -> SessionInfo:
+) -> AuthResult:
     """
     Validate that authentication cookies are fresh and working.
 
-    Tests API call to Panopto before attempting download.
+    Tests API call to Panopto before attempting download. Uses Strategy A
+    (GET /api/v1/user/me) as preferred, with Strategy B (HEAD request) as fallback.
 
     Args:
         cookies: Authenticated cookie jar from load_cookies()
         panopto_base_url: Base URL of Panopto instance (e.g., https://uni.panopto.com)
 
     Returns:
-        SessionInfo with validity status and expiry info
+        AuthResult with success status, message, and optional session info
     """
     try:
-        # Make test API call to validate cookies
-        test_url = f"{panopto_base_url}/api/v1/me"  # Simple endpoint to test auth
+        # Strategy A (preferred): GET /api/v1/user/me
+        test_url = f"{panopto_base_url}/api/v1/user/me"
+        logger.debug(f"Attempting Strategy A: GET {test_url}")
 
-        response = requests.get(
-            test_url,
+        try:
+            response = requests.get(
+                test_url,
+                cookies=cookies,
+                timeout=10,
+            )
+
+            if response.status_code == 401:
+                error_msg = (
+                    "Cookies expired or invalid. Refresh from browser:\n"
+                    "1. Open {}\n"
+                    "2. DevTools (F12) → Storage → Cookies\n"
+                    "3. Export as JSON\n"
+                    "4. Save to cookie file\n"
+                    "5. Re-run: python run_week.py <config_file>"
+                ).format(panopto_base_url)
+                logger.error(error_msg)
+                return AuthResult(success=False, message=error_msg)
+
+            if response.status_code == 403:
+                error_msg = "Access denied. Check that cookies are from correct institution/account."
+                logger.error(error_msg)
+                return AuthResult(success=False, message=error_msg)
+
+            if response.status_code >= 400:
+                # Strategy A failed, try Strategy B
+                logger.warning(
+                    f"Strategy A failed with {response.status_code}, trying Strategy B"
+                )
+                return _validate_session_strategy_b(cookies, panopto_base_url)
+
+            # Strategy A succeeded - extract session info if available
+            expires_in_seconds = _calculate_expiry(cookies)
+            session_info = _extract_session_info(response)
+
+            success_msg = "✓ Session valid"
+            if expires_in_seconds:
+                days = expires_in_seconds // 86400
+                success_msg += f" (expires in {days} days)"
+
+            logger.info(success_msg)
+            return AuthResult(
+                success=True,
+                message=success_msg,
+                session_info=session_info,
+                expires_in_seconds=expires_in_seconds,
+            )
+
+        except requests.Timeout:
+            logger.warning("Strategy A timeout, trying Strategy B")
+            return _validate_session_strategy_b(cookies, panopto_base_url)
+
+        except requests.ConnectionError:
+            logger.warning("Strategy A connection error, trying Strategy B")
+            return _validate_session_strategy_b(cookies, panopto_base_url)
+
+    except requests.Timeout:
+        error_msg = (
+            "Panopto API not responding. Check internet connection and try again."
+        )
+        logger.error(error_msg)
+        return AuthResult(success=False, message=error_msg)
+
+    except requests.ConnectionError:
+        error_msg = f"Cannot reach Panopto. Check URL or network connection.\nURL: {panopto_base_url}"
+        logger.error(error_msg)
+        return AuthResult(success=False, message=error_msg)
+
+    except Exception as e:
+        error_msg = f"Unexpected error validating session: {str(e)}"
+        logger.error(error_msg)
+        return AuthResult(success=False, message=error_msg)
+
+
+def _validate_session_strategy_b(
+    cookies: RequestsCookieJar,
+    panopto_base_url: str,
+) -> AuthResult:
+    """
+    Strategy B fallback: HEAD request to base URL.
+
+    When Strategy A (detailed API call) fails, try a minimal HEAD request
+    to verify basic connectivity and authentication.
+
+    Args:
+        cookies: Authenticated cookie jar
+        panopto_base_url: Base URL of Panopto instance
+
+    Returns:
+        AuthResult based on HEAD request response
+    """
+    try:
+        logger.debug(f"Attempting Strategy B: HEAD {panopto_base_url}")
+
+        response = requests.head(
+            panopto_base_url,
             cookies=cookies,
             timeout=10,
         )
@@ -140,56 +219,91 @@ def validate_session(
         if response.status_code == 401:
             error_msg = (
                 "Cookies expired or invalid. Refresh from browser:\n"
-                "1. Open Panopto in your browser\n"
-                "2. Re-export cookies\n"
-                "3. Update cookie file path in config"
-            )
+                "1. Open {}\n"
+                "2. DevTools (F12) → Storage → Cookies\n"
+                "3. Export as JSON\n"
+                "4. Save to cookie file\n"
+                "5. Re-run: python run_week.py <config_file>"
+            ).format(panopto_base_url)
             logger.error(error_msg)
-            return SessionInfo(valid=False, expires_in_days=None, message=error_msg)
+            return AuthResult(success=False, message=error_msg)
 
         if response.status_code == 403:
-            error_msg = (
-                "Access denied. Check that cookies are from the correct account."
-            )
+            error_msg = "Access denied. Check that cookies are from correct institution/account."
             logger.error(error_msg)
-            return SessionInfo(valid=False, expires_in_days=None, message=error_msg)
+            return AuthResult(success=False, message=error_msg)
 
         if response.status_code >= 400:
-            error_msg = f"Session validation failed (HTTP {response.status_code}). Cookies may be invalid."
+            error_msg = f"Panopto returned {response.status_code}. Try refreshing cookies and re-running."
             logger.error(error_msg)
-            return SessionInfo(valid=False, expires_in_days=None, message=error_msg)
+            return AuthResult(success=False, message=error_msg)
 
-        # Session is valid
-        # Estimate expiry (try to extract from cookies if available)
-        expires_in_days = None
-        for cookie in cookies:
-            if cookie.expires:
-                # Calculate days until expiry (rough estimate)
-                import time
-
-                expires_in_days = max(0, (cookie.expires - int(time.time())) // 86400)
-                break
-
-        success_msg = f"✓ Session valid"
-        if expires_in_days:
-            success_msg += f" (expires in {expires_in_days} days)"
+        # Strategy B succeeded
+        expires_in_seconds = _calculate_expiry(cookies)
+        success_msg = "✓ Session valid (basic validation)"
+        if expires_in_seconds:
+            days = expires_in_seconds // 86400
+            success_msg += f" (expires in {days} days)"
 
         logger.info(success_msg)
-        return SessionInfo(
-            valid=True, expires_in_days=expires_in_days, message=success_msg
+        return AuthResult(
+            success=True,
+            message=success_msg,
+            expires_in_seconds=expires_in_seconds,
         )
 
     except requests.Timeout:
-        error_msg = "Session validation timeout. Check internet connection."
+        error_msg = (
+            "Panopto API not responding. Check internet connection and try again."
+        )
         logger.error(error_msg)
-        return SessionInfo(valid=False, message=error_msg)
+        return AuthResult(success=False, message=error_msg)
 
     except requests.ConnectionError:
-        error_msg = "Cannot reach Panopto. Check URL and network connection."
+        error_msg = f"Cannot reach Panopto. Check URL or network connection.\nURL: {panopto_base_url}"
         logger.error(error_msg)
-        return SessionInfo(valid=False, message=error_msg)
+        return AuthResult(success=False, message=error_msg)
 
     except Exception as e:
         error_msg = f"Unexpected error validating session: {str(e)}"
         logger.error(error_msg)
-        return SessionInfo(valid=False, message=error_msg)
+        return AuthResult(success=False, message=error_msg)
+
+
+def _calculate_expiry(cookies: RequestsCookieJar) -> Optional[int]:
+    """
+    Calculate seconds until session expires.
+
+    Args:
+        cookies: Cookie jar to check
+
+    Returns:
+        Seconds until expiry, or None if not available
+    """
+    for cookie in cookies:
+        if cookie.expires:
+            expires_in_seconds = max(0, cookie.expires - int(time.time()))
+            return expires_in_seconds
+    return None
+
+
+def _extract_session_info(response: requests.Response) -> Optional[SessionInfo]:
+    """
+    Extract session info from API response.
+
+    Args:
+        response: Response from Panopto API
+
+    Returns:
+        SessionInfo object, or None if not available
+    """
+    try:
+        data = response.json()
+        return SessionInfo(
+            user_id=data.get("id"),
+            username=data.get("name"),
+            expires_at=data.get("expiresAt"),
+        )
+    except (json.JSONDecodeError, ValueError):
+        # API response not JSON or missing expected fields
+        return None
