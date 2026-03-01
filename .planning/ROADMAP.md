@@ -60,7 +60,12 @@
 4. System extracts text from text-based PDF slides using pdfplumber; detects image-based slides and flags for manual OCR or uses EasyOCR fallback
 5. User can process lecture with mixed text-based and scanned slides; slide text organized by page for LLM consumption
 
-**Plans:** TBD
+**Plans:** 3 plans in 1 wave
+
+**Wave 1 (Parallel):**
+- [ ] 02-01-PLAN.md — Audio extraction + validation (AUDIO-01, AUDIO-02, AUDIO-03, AUDIO-04)
+- [ ] 02-02-PLAN.md — Transcript processing + cleanup (TRAN-01, TRAN-02, TRAN-03, TRAN-04, TRAN-05)
+- [ ] 02-03-PLAN.md — Slide text extraction (SLIDE-01, SLIDE-02, SLIDE-03, SLIDE-04, SLIDE-05)
 
 ---
 
@@ -106,8 +111,8 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/4 | Planned | — |
-| 2. Media Processing | 0/? | Not started | — |
+| 1. Foundation | 4/4 | Complete | ✓ |
+| 2. Media Processing | 0/3 | Planned | — |
 | 3. Intelligence & Output | 0/? | Not started | — |
 | 4. Reliability & Recovery | 0/? | Not started | — |
 
