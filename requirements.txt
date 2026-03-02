@@ -1,7 +1,23 @@
-requests==2.31.0
-pydantic==2.5.0
-PyYAML==6.0.1
-pytest==7.4.3
+# Phase 1: Foundation
+requests==2.32.3
+pydantic==2.9.2
+pydantic-core==2.23.4
+PyYAML==6.0.2
+
+# Phase 2: Media Processing
+pdfplumber>=0.11.5
+pymupdf>=1.24.0
+
+# Phase 3: Intelligence & Output
+openai>=1.40.0
+tiktoken>=0.7.0
+
+# Testing & Development
+pytest==8.0.2
 pytest-cov==4.1.0
 tenacity==8.2.3
-typed-ffmpeg==3.11
+ffmpeg-python>=0.2.0
+
+# Optional: OCR for scanned slides (large download, lazy-loaded)
+# Uncomment below if you need OCR fallback for PDF slides
+# easyocr>=1.7.0
