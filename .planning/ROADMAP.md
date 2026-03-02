@@ -109,7 +109,15 @@
 4. System copies processed audio, slides, and transcript to Google Drive local sync folder (e.g., `/Business Analytics/Week_05/`); validates file copy success and quota
 5. System detects and optionally removes PII from transcript before LLM call (student names, emails); temporary files cleaned up after processing (no residual data)
 
-**Plans:** TBD
+**Plans:** 4 plans in 2 waves
+
+**Wave 1 (Parallel):**
+- [ ] 04-01-PLAN.md — Checkpoint/resume system (STATE-01, STATE-02, STATE-03, STATE-04)
+- [ ] 04-02-PLAN.md — Error handling & logging with retry (ERR-01, ERR-02, ERR-03, ERR-04, ERR-05)
+- [ ] 04-03-PLAN.md — Privacy controls & temp cleanup (PRIV-03, PRIV-04, PRIV-05)
+
+**Wave 2 (Depends on Wave 1):**
+- [ ] 04-04-PLAN.md — Google Drive sync integration (SYNC-01, SYNC-02, SYNC-03, SYNC-04)
 
 ---
 
@@ -120,7 +128,7 @@
 | 1. Foundation | 4/4 | Complete | ✓ |
 | 2. Media Processing | 1/3 | In Progress | ⊙ |
 | 3. Intelligence & Output | 0/2 | Planning | ⊙ |
-| 4. Reliability & Recovery | 0/? | Not started | — |
+| 4. Reliability & Recovery | 0/4 | Planning | ⊙ |
 
 ---
 
