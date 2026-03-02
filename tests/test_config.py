@@ -222,3 +222,275 @@ metadata:
 
             with pytest.raises(Exception):
                 load_config(str(config_path))
+
+
+class TestObsidianConfig:
+    """Tests for Obsidian-related configuration fields."""
+
+    def test_config_obsidian_vault_path_required(self):
+        """Missing obsidian_vault_path field (can be empty string, but field exists)."""
+        config_dict = {
+            "lecture": {
+                "url": "https://example.com/panopto",
+                "slide_path": "slides/test.pdf",
+            },
+            "paths": {
+                "cookie_file": "cookies/test.json",
+                "output_dir": "downloads/test",
+            },
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            slide_path = Path(tmpdir) / "slides" / "test.pdf"
+            slide_path.parent.mkdir(parents=True, exist_ok=True)
+            slide_path.touch()
+            config_dict["lecture"]["slide_path"] = str(slide_path)
+            config_dict["paths"]["output_dir"] = str(Path(tmpdir) / "downloads")
+
+            # Should create config with default empty vault path
+            config = ConfigModel(**config_dict)
+            assert config.obsidian_vault_path == ""
+
+    def test_config_obsidian_vault_path_empty_string_invalid(self):
+        """Empty string for vault path is invalid if explicitly set to whitespace."""
+        config_dict = {
+            "lecture": {
+                "url": "https://example.com/panopto",
+                "slide_path": "slides/test.pdf",
+            },
+            "paths": {
+                "cookie_file": "cookies/test.json",
+                "output_dir": "downloads/test",
+            },
+            "obsidian_vault_path": "   ",  # Whitespace only
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            slide_path = Path(tmpdir) / "slides" / "test.pdf"
+            slide_path.parent.mkdir(parents=True, exist_ok=True)
+            slide_path.touch()
+            config_dict["lecture"]["slide_path"] = str(slide_path)
+            config_dict["paths"]["output_dir"] = str(Path(tmpdir) / "downloads")
+
+            with pytest.raises(ValidationError):
+                ConfigModel(**config_dict)
+
+    def test_config_obsidian_vault_path_valid(self):
+        """Valid obsidian vault path accepted."""
+        config_dict = {
+            "lecture": {
+                "url": "https://example.com/panopto",
+                "slide_path": "slides/test.pdf",
+            },
+            "paths": {
+                "cookie_file": "cookies/test.json",
+                "output_dir": "downloads/test",
+            },
+            "obsidian_vault_path": "/path/to/vault",
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            slide_path = Path(tmpdir) / "slides" / "test.pdf"
+            slide_path.parent.mkdir(parents=True, exist_ok=True)
+            slide_path.touch()
+            config_dict["lecture"]["slide_path"] = str(slide_path)
+            config_dict["paths"]["output_dir"] = str(Path(tmpdir) / "downloads")
+
+            config = ConfigModel(**config_dict)
+            assert config.obsidian_vault_path == "/path/to/vault"
+
+
+class TestOpenRouterConfig:
+    """Tests for OpenRouter API configuration."""
+
+    def test_config_openrouter_api_key_required(self):
+        """OpenRouter API key defaults to empty."""
+        config_dict = {
+            "lecture": {
+                "url": "https://example.com/panopto",
+                "slide_path": "slides/test.pdf",
+            },
+            "paths": {
+                "cookie_file": "cookies/test.json",
+                "output_dir": "downloads/test",
+            },
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            slide_path = Path(tmpdir) / "slides" / "test.pdf"
+            slide_path.parent.mkdir(parents=True, exist_ok=True)
+            slide_path.touch()
+            config_dict["lecture"]["slide_path"] = str(slide_path)
+            config_dict["paths"]["output_dir"] = str(Path(tmpdir) / "downloads")
+
+            config = ConfigModel(**config_dict)
+            assert config.openrouter_api_key == ""
+
+    def test_config_openrouter_api_key_empty_string_invalid(self):
+        """Empty/whitespace string for API key is invalid if explicitly set."""
+        config_dict = {
+            "lecture": {
+                "url": "https://example.com/panopto",
+                "slide_path": "slides/test.pdf",
+            },
+            "paths": {
+                "cookie_file": "cookies/test.json",
+                "output_dir": "downloads/test",
+            },
+            "openrouter_api_key": "   ",
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            slide_path = Path(tmpdir) / "slides" / "test.pdf"
+            slide_path.parent.mkdir(parents=True, exist_ok=True)
+            slide_path.touch()
+            config_dict["lecture"]["slide_path"] = str(slide_path)
+            config_dict["paths"]["output_dir"] = str(Path(tmpdir) / "downloads")
+
+            with pytest.raises(ValidationError):
+                ConfigModel(**config_dict)
+
+
+class TestLLMBudgetConfig:
+    """Tests for LLM budget configuration."""
+
+    def test_config_llm_budget_aud_valid_range(self):
+        """LLM budget in valid range (0.01-1.00) accepted."""
+        config_dict = {
+            "lecture": {
+                "url": "https://example.com/panopto",
+                "slide_path": "slides/test.pdf",
+            },
+            "paths": {
+                "cookie_file": "cookies/test.json",
+                "output_dir": "downloads/test",
+            },
+            "llm_budget_aud": 0.50,
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            slide_path = Path(tmpdir) / "slides" / "test.pdf"
+            slide_path.parent.mkdir(parents=True, exist_ok=True)
+            slide_path.touch()
+            config_dict["lecture"]["slide_path"] = str(slide_path)
+            config_dict["paths"]["output_dir"] = str(Path(tmpdir) / "downloads")
+
+            config = ConfigModel(**config_dict)
+            assert config.llm_budget_aud == 0.50
+
+    def test_config_llm_budget_aud_too_low(self):
+        """Budget below 0.01 rejected."""
+        config_dict = {
+            "lecture": {
+                "url": "https://example.com/panopto",
+                "slide_path": "slides/test.pdf",
+            },
+            "paths": {
+                "cookie_file": "cookies/test.json",
+                "output_dir": "downloads/test",
+            },
+            "llm_budget_aud": 0.001,
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            slide_path = Path(tmpdir) / "slides" / "test.pdf"
+            slide_path.parent.mkdir(parents=True, exist_ok=True)
+            slide_path.touch()
+            config_dict["lecture"]["slide_path"] = str(slide_path)
+            config_dict["paths"]["output_dir"] = str(Path(tmpdir) / "downloads")
+
+            with pytest.raises(ValidationError):
+                ConfigModel(**config_dict)
+
+    def test_config_llm_budget_aud_too_high(self):
+        """Budget above 1.00 rejected."""
+        config_dict = {
+            "lecture": {
+                "url": "https://example.com/panopto",
+                "slide_path": "slides/test.pdf",
+            },
+            "paths": {
+                "cookie_file": "cookies/test.json",
+                "output_dir": "downloads/test",
+            },
+            "llm_budget_aud": 1.50,
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            slide_path = Path(tmpdir) / "slides" / "test.pdf"
+            slide_path.parent.mkdir(parents=True, exist_ok=True)
+            slide_path.touch()
+            config_dict["lecture"]["slide_path"] = str(slide_path)
+            config_dict["paths"]["output_dir"] = str(Path(tmpdir) / "downloads")
+
+            with pytest.raises(ValidationError):
+                ConfigModel(**config_dict)
+
+
+class TestLLMSafetyBufferConfig:
+    """Tests for LLM safety buffer configuration."""
+
+    def test_config_safety_buffer_valid_range(self):
+        """Safety buffer in valid range (0.0-0.5) accepted."""
+        config_dict = {
+            "lecture": {
+                "url": "https://example.com/panopto",
+                "slide_path": "slides/test.pdf",
+            },
+            "paths": {
+                "cookie_file": "cookies/test.json",
+                "output_dir": "downloads/test",
+            },
+            "llm_safety_buffer": 0.25,
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            slide_path = Path(tmpdir) / "slides" / "test.pdf"
+            slide_path.parent.mkdir(parents=True, exist_ok=True)
+            slide_path.touch()
+            config_dict["lecture"]["slide_path"] = str(slide_path)
+            config_dict["paths"]["output_dir"] = str(Path(tmpdir) / "downloads")
+
+            config = ConfigModel(**config_dict)
+            assert config.llm_safety_buffer == 0.25
+
+    def test_config_safety_buffer_too_high(self):
+        """Safety buffer above 0.5 rejected."""
+        config_dict = {
+            "lecture": {
+                "url": "https://example.com/panopto",
+                "slide_path": "slides/test.pdf",
+            },
+            "paths": {
+                "cookie_file": "cookies/test.json",
+                "output_dir": "downloads/test",
+            },
+            "llm_safety_buffer": 0.6,
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            slide_path = Path(tmpdir) / "slides" / "test.pdf"
+            slide_path.parent.mkdir(parents=True, exist_ok=True)
+            slide_path.touch()
+            config_dict["lecture"]["slide_path"] = str(slide_path)
+            config_dict["paths"]["output_dir"] = str(Path(tmpdir) / "downloads")
+
+            with pytest.raises(ValidationError):
+                ConfigModel(**config_dict)
+
+
+class TestExampleConfigValid:
+    """Tests for the example configuration file."""
+
+    def test_config_example_file_valid_structure(self):
+        """Example config file has valid structure."""
+        example_path = Path("config/example_week_05.yaml")
+        if example_path.exists():
+            with open(example_path) as f:
+                config_dict = yaml.safe_load(f)
+
+            # Should have basic required fields
+            assert "lecture" in config_dict
+            assert "paths" in config_dict
+            assert "obsidian_vault_path" in config_dict
+            assert "openrouter_api_key" in config_dict

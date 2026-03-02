@@ -39,6 +39,12 @@ class ConfigModel(BaseModel):
     lecture: LectureConfig
     paths: PathsConfig
     metadata: MetadataConfig = MetadataConfig()
+    obsidian_vault_path: str = ""
+    obsidian_note_subfolder: str = "Lectures"
+    openrouter_api_key: str = ""
+    llm_model: str = "deepseek/deepseek-chat"
+    llm_budget_aud: float = 0.30
+    llm_safety_buffer: float = 0.20
 
     @field_validator("lecture", mode="before")
     @classmethod
@@ -74,6 +80,50 @@ class ConfigModel(BaseModel):
             except (OSError, PermissionError) as e:
                 raise ValueError(
                     f"Output directory is not writable: {output_dir}. Error: {e}"
+                )
+        return v
+
+    @field_validator("obsidian_vault_path", mode="before")
+    @classmethod
+    def validate_obsidian_vault_path(cls, v):
+        """Validate obsidian vault path."""
+        if isinstance(v, str) and v:
+            if not v.strip():
+                raise ValueError("obsidian_vault_path cannot be empty string")
+        return v
+
+    @field_validator("openrouter_api_key", mode="before")
+    @classmethod
+    def validate_openrouter_api_key(cls, v):
+        """Validate OpenRouter API key."""
+        if isinstance(v, str) and v:
+            if not v.strip():
+                raise ValueError("openrouter_api_key cannot be empty string")
+            if len(v) < 20:
+                logger.warning(
+                    f"openrouter_api_key seems short ({len(v)} chars), may be invalid"
+                )
+        return v
+
+    @field_validator("llm_budget_aud", mode="before")
+    @classmethod
+    def validate_llm_budget_aud(cls, v):
+        """Validate LLM budget."""
+        if isinstance(v, (int, float)):
+            if not (0.01 <= v <= 1.00):
+                raise ValueError(
+                    f"llm_budget_aud must be between 0.01 and 1.00, got {v}"
+                )
+        return v
+
+    @field_validator("llm_safety_buffer", mode="before")
+    @classmethod
+    def validate_llm_safety_buffer(cls, v):
+        """Validate LLM safety buffer."""
+        if isinstance(v, (int, float)):
+            if not (0.0 <= v <= 0.5):
+                raise ValueError(
+                    f"llm_safety_buffer must be between 0.0 and 0.5, got {v}"
                 )
         return v
 

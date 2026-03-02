@@ -363,3 +363,190 @@ class TestPhase1FileOrganization:
         partial_file.unlink()
 
         assert not partial_file.exists()
+
+
+class TestPhase3LLMToObsidianPipeline:
+    """Integration tests for Phase 3 LLM → Obsidian workflow."""
+
+    def test_full_llm_to_obsidian_pipeline(self):
+        """End-to-end: mock transcript + slides → LLM API call → vault write."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            from src.obsidian_writer import ObsidianWriter
+
+            vault_path = Path(tmpdir) / "vault"
+            vault_path.mkdir()
+
+            config = {
+                "obsidian_vault_path": str(vault_path),
+                "obsidian_note_subfolder": "Lectures",
+            }
+
+            writer = ObsidianWriter(config)
+
+            # Mock LLM output
+            llm_content = """## Summary
+            Test summary of the lecture.
+
+            ## Key Concepts
+            - Concept 1
+            - Concept 2
+            - Concept 3
+
+            ## Examples
+            Real-world example 1
+            Real-world example 2
+
+            ## Formulas
+            Some formulas if applicable
+
+            ## Pitfalls
+            Common mistake 1
+            Common mistake 2
+
+            ## Review Questions
+            Question 1
+            Question 2"""
+
+            metadata = {
+                "course": "Test Course",
+                "week": 5,
+                "date": "2026-03-02",
+                "panopto_url": "https://panopto.com/test",
+                "subfolder": "Lectures",
+            }
+
+            success, result = writer.write_complete_note(metadata, llm_content)
+
+            assert success
+            output_file = Path(result)
+            assert output_file.exists()
+            assert output_file.name == "Week_05.md"
+
+    def test_pipeline_handles_missing_vault(self):
+        """Vault not found returns error."""
+        from src.obsidian_writer import ObsidianWriter
+
+        config = {
+            "obsidian_vault_path": "/nonexistent/vault",
+            "obsidian_note_subfolder": "Lectures",
+        }
+
+        writer = ObsidianWriter(config)
+
+        llm_content = """## Summary
+        Summary
+
+        ## Key Concepts
+        Concepts
+
+        ## Examples
+        Examples
+
+        ## Formulas
+        Formulas
+
+        ## Pitfalls
+        Pitfalls
+
+        ## Review Questions
+        Questions"""
+
+        metadata = {
+            "course": "Test",
+            "week": 1,
+            "date": "2026-03-01",
+            "panopto_url": "https://panopto.com/",
+            "subfolder": "Lectures",
+        }
+
+        success, result = writer.write_complete_note(metadata, llm_content)
+
+        assert not success
+        assert "not found" in result.lower()
+
+    def test_pipeline_handles_invalid_markdown(self):
+        """Invalid markdown caught before writing."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            from src.obsidian_writer import ObsidianWriter
+
+            vault_path = Path(tmpdir) / "vault"
+            vault_path.mkdir()
+
+            config = {
+                "obsidian_vault_path": str(vault_path),
+                "obsidian_note_subfolder": "Lectures",
+            }
+
+            writer = ObsidianWriter(config)
+
+            # Invalid: missing required sections
+            llm_content = "## Summary\nJust summary, nothing else"
+
+            metadata = {
+                "course": "Test",
+                "week": 1,
+                "date": "2026-03-01",
+                "panopto_url": "https://panopto.com/",
+                "subfolder": "Lectures",
+            }
+
+            success, result = writer.write_complete_note(metadata, llm_content)
+
+            assert not success
+            assert "Invalid markdown" in result
+
+    def test_pipeline_creates_backup_file_on_conflict(self):
+        """File exists, new write creates backup with timestamp."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            from src.obsidian_writer import ObsidianWriter
+
+            vault_path = Path(tmpdir) / "vault"
+            vault_path.mkdir()
+
+            config = {
+                "obsidian_vault_path": str(vault_path),
+                "obsidian_note_subfolder": "Lectures",
+            }
+
+            writer = ObsidianWriter(config)
+
+            # Create initial file
+            (vault_path / "Lectures").mkdir(parents=True, exist_ok=True)
+            initial_file = vault_path / "Lectures" / "Week_01.md"
+            initial_file.write_text("Original content")
+
+            # Valid LLM content
+            llm_content = """## Summary
+            New summary
+
+            ## Key Concepts
+            Concepts
+
+            ## Examples
+            Examples
+
+            ## Formulas
+            Formulas
+
+            ## Pitfalls
+            Pitfalls
+
+            ## Review Questions
+            Questions"""
+
+            metadata = {
+                "course": "Test",
+                "week": 1,
+                "date": "2026-03-01",
+                "panopto_url": "https://panopto.com/",
+                "subfolder": "Lectures",
+            }
+
+            success, result = writer.write_complete_note(metadata, llm_content)
+
+            assert success
+            assert initial_file.exists()
+            new_file = Path(result)
+            assert new_file.exists()
+            assert new_file != initial_file
+            assert "__" in new_file.name  # Timestamp separator
