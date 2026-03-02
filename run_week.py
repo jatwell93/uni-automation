@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
 """
-Main CLI entry point for processing a weekly lecture.
+Main CLI entry point for processing a weekly lecture with checkpoint/resume support.
 
 Usage:
-    python run_week.py config/week_05.yaml
+    python run_week.py config/week_05.yaml              # Fresh run
+    python run_week.py config/week_05.yaml --retry      # Resume from checkpoint
 
 Features:
 - Comprehensive error handling with recovery instructions
 - Progress output with emoji indicators
 - Detailed logging to file with timestamps
+- Checkpoint/resume support for failed runs
 - Exit codes: 0 on success, 1 on error
 """
 
 import logging
 import sys
+import argparse
 from pathlib import Path
 
 # Configure basic logging (before imports)
@@ -33,6 +36,9 @@ from src.downloader import (
     extract_base_url,
 )
 from src.validator import validate_video
+from src.state import PipelineState
+from src.checkpoint import CheckpointManager
+from src.pipeline import run_lecture_pipeline
 
 
 def setup_logging(log_file: Path):
@@ -68,13 +74,30 @@ def print_progress(symbol: str, message: str):
 
 
 def main():
-    """Main entry point with comprehensive error handling."""
-    if len(sys.argv) < 2:
-        print("Usage: python run_week.py <config_file>")
-        print("Example: python run_week.py config/week_05.yaml")
-        return 1
+    """Main entry point with checkpoint/resume support."""
+    parser = argparse.ArgumentParser(
+        description="Process a weekly lecture with checkpoint/resume support",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python run_week.py config/week_05.yaml           # Fresh run
+  python run_week.py config/week_05.yaml --retry   # Resume from checkpoint
+        """,
+    )
+    parser.add_argument("config_file", help="Path to configuration file")
+    parser.add_argument(
+        "--retry",
+        action="store_true",
+        help="Resume from last checkpoint (skips completed stages)",
+    )
+    parser.add_argument(
+        "--checkpoint-file",
+        type=str,
+        help="Specific checkpoint file to resume from (auto-detected if not specified)",
+    )
 
-    config_file = sys.argv[1]
+    args = parser.parse_args()
+    config_file = args.config_file
 
     # Load configuration
     try:
@@ -98,6 +121,70 @@ def main():
     log_dir = Path(".planning/logs")
     log_file = log_dir / f"week_{config.metadata.week_number:02d}.log"
     setup_logging(log_file)
+
+    # Check if running full pipeline with checkpoint/resume (Phase 3)
+    if args.retry:
+        # Resume from checkpoint
+        print_progress("↻", "Resuming from checkpoint...")
+        try:
+            checkpoint_manager = CheckpointManager()
+
+            # Find latest checkpoint if not specified
+            checkpoint_file = args.checkpoint_file
+            if not checkpoint_file:
+                lecture_id = f"week_{config.metadata.week_number:02d}"
+                latest_checkpoint = checkpoint_manager.find_latest_checkpoint(
+                    lecture_id
+                )
+                if latest_checkpoint:
+                    checkpoint_file = str(latest_checkpoint)
+                else:
+                    print_progress("✗", f"No checkpoint found for {lecture_id}")
+                    print("  Recovery: Run without --retry to start fresh")
+                    logger.error(f"No checkpoint found for {lecture_id}")
+                    return 1
+
+            # Load state from checkpoint
+            state = PipelineState(
+                config=config,
+                checkpoint_file=checkpoint_file,
+                checkpoint_manager=checkpoint_manager,
+            )
+            print_progress("✓", state.get_checkpoint_summary())
+
+            # Run full pipeline with checkpoint state
+            success, summary = run_lecture_pipeline(config, state=state)
+
+            if success:
+                print()
+                print(summary)
+                logger.info("Phase 3 complete - success")
+                return 0
+            else:
+                print_progress("✗", summary)
+                logger.error(summary)
+                # Print recovery instructions
+                week_num = config.metadata.week_number
+                print(f"  Recovery: python run_week.py {config_file} --retry")
+                return 1
+
+        except FileNotFoundError as e:
+            print_progress("✗", f"Checkpoint file not found: {e}")
+            print("  Recovery: Run without --retry to start fresh")
+            logger.error(f"Checkpoint error: {e}", exc_info=True)
+            return 1
+        except ValueError as e:
+            print_progress("✗", f"Checkpoint corrupted: {e}")
+            print(
+                "  Recovery: Delete .state/ directory and run without --retry to start fresh"
+            )
+            logger.error(f"Checkpoint error: {e}", exc_info=True)
+            return 1
+        except Exception as e:
+            print_progress("✗", f"Pipeline error: {e}")
+            print("  Recovery: Check error logs for details")
+            logger.error(f"Pipeline error: {e}", exc_info=True)
+            return 1
 
     # Load cookies
     try:
