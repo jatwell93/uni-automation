@@ -91,3 +91,23 @@ class TranscriptError(Exception):
     """Exception raised when transcript processing fails."""
 
     pass
+
+
+@dataclass
+class SlideExtractionResult:
+    """Result of a slide text extraction operation."""
+
+    status: str  # "success", "partial", "error", "missing"
+    slide_text: Optional[str] = (
+        None  # Organized by page: "[Page 1]\n...\n[Page 2]\n..."
+    )
+    page_count: Optional[int] = None
+    text_pages: Optional[int] = None  # Pages with extractable text
+    used_ocr: bool = False
+    error_message: Optional[str] = None
+
+
+class SlideExtractionError(Exception):
+    """Exception raised when slide extraction fails."""
+
+    pass
