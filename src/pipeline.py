@@ -302,13 +302,67 @@ def run_lecture_pipeline(
 
             completed_stages.append("obsidian-write")
 
+        # Google Drive sync (if enabled)
+        gdrive_sync_status = ""
+        if config.gdrive_sync_enabled:
+            logger.set_stage("gdrive-sync")
+            try:
+                from src.gdrive_sync import GoogleDriveSyncManager
+
+                sync_manager = GoogleDriveSyncManager(config)
+                output_dir = Path(config.paths.output_dir)
+                transcript_path = output_dir / "transcript.txt"
+                audio_path = output_dir / "audio.m4a"
+                slides_path = output_dir / "slides.txt"
+
+                sync_result = sync_manager.sync_artifacts(
+                    lecture_id=f"week_{config.metadata.week_number:02d}",
+                    transcript_path=str(transcript_path),
+                    audio_path=str(audio_path),
+                    slides_text_path=str(slides_path),
+                    course_name=config.metadata.course_name,
+                    week_number=config.metadata.week_number,
+                )
+
+                if sync_result.success:
+                    total_mb = sync_result.total_size_bytes / (1024 * 1024)
+                    gdrive_sync_status = (
+                        f"\n📁 Google Drive: {sync_result.synced_files} files synced "
+                        f"({total_mb:.2f} MB) → {config.metadata.course_name}/Week_{config.metadata.week_number:02d}/"
+                    )
+                    logger.info(
+                        f"✓ Google Drive sync complete: {sync_result.synced_files} files"
+                    )
+                    completed_stages.append("gdrive-sync")
+                else:
+                    # Sync failed - log errors but don't fail pipeline
+                    gdrive_sync_status = f"\n⚠ Google Drive sync incomplete: {sync_result.failed_files} files failed"
+                    for error in sync_result.errors:
+                        logger.warning(
+                            f"  - {error.file}: {error.error}. Recovery: {error.recovery_action}",
+                            recovery_action=error.recovery_action,
+                        )
+                    logger.warning(
+                        f"Google Drive sync partial failure. Pipeline continues (files available locally)."
+                    )
+
+            except Exception as e:
+                # Sync error - log and continue (don't fail pipeline)
+                gdrive_sync_status = f"\n⚠ Google Drive sync skipped: {str(e)}"
+                logger.warning(
+                    f"Google Drive sync failed: {str(e)}. Pipeline continues (files available locally).",
+                    recovery_action="Check Google Drive folder settings and retry or disable sync",
+                )
+        else:
+            gdrive_sync_status = "\n⊘ Google Drive sync disabled in config"
+
         # Build summary message
         summary = f"""
 ✓ Lecture processing complete!
 
 📝 Notes saved to: {obsidian_path}
 💰 Cost: AUD ${llm_result.cost_aud:.4f}
-📊 Tokens: {llm_result.input_tokens} input, {llm_result.output_tokens} output
+📊 Tokens: {llm_result.input_tokens} input, {llm_result.output_tokens} output{gdrive_sync_status}
 
 Next: Open Obsidian vault to review notes
 """

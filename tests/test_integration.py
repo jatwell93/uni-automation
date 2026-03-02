@@ -777,8 +777,9 @@ class TestErrorHandlingIntegration:
 
         # Create dummy files
         Path(str(tmpdir / "test.pdf")).write_bytes(b"%PDF-1.4\n")
-        Path(str(tmpdir / "output")).mkdir()
-        Path(str(tmpdir / "output") / "transcript.txt").write_text("Test transcript")
+        output_dir = Path(str(tmpdir / "output"))
+        output_dir.mkdir()
+        (output_dir / "transcript.txt").write_text("Test transcript")
 
         config = ConfigModel(**config_data)
         # Pipeline success should return tuple with success flag and summary
@@ -834,22 +835,35 @@ class TestErrorHandlingIntegration:
             # Call should eventually succeed after retry
             from src.config import ConfigModel
 
-            config = ConfigModel(
-                lecture={"url": "test", "slide_path": "test.pdf"},
-                paths={
-                    "cookie_file": "test.json",
-                    "output_dir": "out",
-                    "temp_dir": "temp",
-                },
-                metadata={"course_name": "test", "week_number": 1},
-                obsidian_vault_path="vault",
-                openrouter_api_key="test",
-            )
+            import tempfile
+            from pathlib import Path
 
-            success, result, msg = run_stage(failing_stage, "test-stage", config)
-            assert success is True
-            assert result == "success"
-            assert call_count >= 1
+            with tempfile.TemporaryDirectory() as tmpdir:
+                # Create slide file
+                slide_path = Path(tmpdir) / "slides.pdf"
+                slide_path.write_bytes(b"pdf")
+                output_dir = Path(tmpdir) / "output"
+                output_dir.mkdir()
+
+                config = ConfigModel(
+                    lecture={
+                        "url": "https://example.com/test",
+                        "slide_path": str(slide_path),
+                    },
+                    paths={
+                        "cookie_file": "test.json",
+                        "output_dir": str(output_dir),
+                    },
+                    metadata={"course_name": "test", "week_number": 1},
+                    obsidian_vault_path="vault",
+                    openrouter_api_key="sk-or-v1-test-key",
+                    gdrive_sync_enabled=False,  # Disable to avoid folder validation
+                )
+
+                success, result, msg = run_stage(failing_stage, "test-stage", config)
+                assert success is True
+                assert result == "success"
+                assert call_count >= 1
         finally:
             pipeline_mod.logger = original_logger
 
@@ -1058,3 +1072,166 @@ class TestCheckpointIntegration:
         assert "Failed at" in failure_msg
         assert "stages completed" in failure_msg
         assert "--retry" in failure_msg
+
+
+class TestGoogleDriveSyncIntegration:
+    """Integration tests for Google Drive sync in pipeline."""
+
+    @pytest.fixture
+    def config_with_gdrive(self, tmp_path):
+        """Create config with Google Drive sync enabled."""
+        from src.config import ConfigModel, LectureConfig, PathsConfig, MetadataConfig
+
+        gdrive_folder = tmp_path / "gdrive"
+        gdrive_folder.mkdir()
+
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+
+        config = ConfigModel(
+            lecture=LectureConfig(
+                url="https://example.com/panopto",
+                slide_path=str(tmp_path / "slides.pdf"),
+            ),
+            paths=PathsConfig(
+                cookie_file=str(tmp_path / "cookies.json"),
+                output_dir=str(output_dir),
+            ),
+            metadata=MetadataConfig(
+                course_name="Business Analytics",
+                week_number=5,
+            ),
+            obsidian_vault_path=str(tmp_path / "vault"),
+            openrouter_api_key="test-key",
+            gdrive_sync_enabled=True,
+            gdrive_sync_folder=str(gdrive_folder),
+        )
+
+        # Create slides file for validation
+        slides_file = tmp_path / "slides.pdf"
+        slides_file.write_bytes(b"pdf content")
+
+        return config
+
+    def test_google_drive_sync_enabled_copies_files(self, config_with_gdrive, tmp_path):
+        """Test that enabled sync copies transcript/audio/slides to Google Drive."""
+        from src.gdrive_sync import GoogleDriveSyncManager
+
+        output_dir = Path(config_with_gdrive.paths.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create mock artifacts
+        transcript = output_dir / "transcript.txt"
+        audio = output_dir / "audio.m4a"
+        slides = output_dir / "slides.txt"
+
+        transcript.write_text("Lecture transcript")
+        audio.write_bytes(b"audio data")
+        slides.write_text("Slide content")
+
+        # Run sync
+        manager = GoogleDriveSyncManager(config_with_gdrive)
+        result = manager.sync_artifacts(
+            lecture_id="week_05",
+            transcript_path=str(transcript),
+            audio_path=str(audio),
+            slides_text_path=str(slides),
+            course_name=config_with_gdrive.metadata.course_name,
+            week_number=config_with_gdrive.metadata.week_number,
+        )
+
+        # Verify
+        assert result.success
+        assert result.synced_files == 3
+        assert result.failed_files == 0
+
+    def test_google_drive_sync_disabled_skips_copy(self, config_with_gdrive, tmp_path):
+        """Test that disabled sync skips copying files."""
+        config_with_gdrive.gdrive_sync_enabled = False
+
+        output_dir = Path(config_with_gdrive.paths.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create mock artifacts
+        transcript = output_dir / "transcript.txt"
+        audio = output_dir / "audio.m4a"
+        slides = output_dir / "slides.txt"
+
+        transcript.write_text("Lecture transcript")
+        audio.write_bytes(b"audio data")
+        slides.write_text("Slide content")
+
+        # Verify Google Drive folder is empty
+        gdrive_folder = Path(config_with_gdrive.gdrive_sync_folder)
+        files_before = list(gdrive_folder.rglob("*"))
+        assert len([f for f in files_before if f.is_file()]) == 0
+
+    def test_google_drive_sync_creates_course_week_folder(
+        self, config_with_gdrive, tmp_path
+    ):
+        """Test that sync creates proper course/week subfolder structure."""
+        from src.gdrive_sync import GoogleDriveSyncManager
+
+        output_dir = Path(config_with_gdrive.paths.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create mock artifacts
+        transcript = output_dir / "transcript.txt"
+        audio = output_dir / "audio.m4a"
+        slides = output_dir / "slides.txt"
+
+        transcript.write_text("content")
+        audio.write_bytes(b"audio")
+        slides.write_text("slides")
+
+        # Run sync
+        manager = GoogleDriveSyncManager(config_with_gdrive)
+        manager.sync_artifacts(
+            lecture_id="week_05",
+            transcript_path=str(transcript),
+            audio_path=str(audio),
+            slides_text_path=str(slides),
+            course_name="Business Analytics",
+            week_number=5,
+        )
+
+        # Verify folder structure
+        gdrive_folder = Path(config_with_gdrive.gdrive_sync_folder)
+        course_folder = gdrive_folder / "business-analytics" / "Week_05"
+
+        assert course_folder.exists()
+        assert (course_folder / "transcript.txt").exists()
+        assert (course_folder / "audio.m4a").exists()
+        assert (course_folder / "slides.txt").exists()
+
+    def test_google_drive_sync_partial_failure_continues_pipeline(
+        self, config_with_gdrive, tmp_path
+    ):
+        """Test that partial sync failure doesn't crash pipeline."""
+        from src.gdrive_sync import GoogleDriveSyncManager
+
+        output_dir = Path(config_with_gdrive.paths.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create some mock artifacts, but leave one missing
+        transcript = output_dir / "transcript.txt"
+        slides = output_dir / "slides.txt"
+
+        transcript.write_text("content")
+        slides.write_text("slides")
+
+        # Run sync with missing audio file
+        manager = GoogleDriveSyncManager(config_with_gdrive)
+        result = manager.sync_artifacts(
+            lecture_id="week_05",
+            transcript_path=str(transcript),
+            audio_path=str(output_dir / "missing_audio.m4a"),  # Missing
+            slides_text_path=str(slides),
+            course_name="Business Analytics",
+            week_number=5,
+        )
+
+        # Verify partial success
+        assert result.synced_files == 2  # transcript and slides
+        assert result.failed_files == 1  # audio
+        assert len(result.errors) == 1  # one error for audio
