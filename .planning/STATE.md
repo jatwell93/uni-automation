@@ -1,7 +1,7 @@
 # Project State: Automated Lecture Workflow
 
 **Last Updated:** March 2, 2026  
-**Project Phase:** Phase 2 (Media Processing) - COMPLETE (All 3 plans done)  
+**Project Phase:** Phase 3 (Intelligence & Output) - IN PROGRESS (Plan 01 complete)  
 **Mode:** YOLO (solo implementation)
 
 ---
@@ -18,8 +18,8 @@
 
 ## Current Position
 
-**Current Focus:** Phase 3 (Intelligence & Output) - Planning  
-**Next Step:** Design LLM pipeline and Obsidian integration
+**Current Focus:** Phase 3 (Intelligence & Output) - Plan 01 Complete, Plan 02 Awaiting  
+**Next Step:** Implement Obsidian vault integration and note formatting
 
 | Metric | Status |
 |--------|--------|
@@ -32,6 +32,7 @@
 | **Phase 2 Plan 01** | ✓ Complete (Audio extraction with validation) |
 | **Phase 2 Plan 02** | ✓ Complete (Transcript processing + cleaning + PII removal) |
 | **Phase 2 Plan 03** | ✓ Complete (Slide text extraction, pdfplumber + OCR fallback) |
+| **Phase 3 Plan 01** | ✓ Complete (LLM integration with token budgeting and cost control) |
 
 ---
 
@@ -41,10 +42,10 @@
 |-------|------|------|--------|
 | 1 | Foundation (Config, Auth, Download) | 12 | ✓ 100% Complete (All 4 plans done) |
 | 2 | Media Processing (Audio, Slides, Transcript) | 14 | ✓ 100% Complete (All 3 plans done) |
-| 3 | Intelligence & Output (LLM, Obsidian, Cost) | 14 | Not Started |
+| 3 | Intelligence & Output (LLM, Obsidian, Cost) | 14 | IN PROGRESS (Plan 01 done: 9/14 reqs) |
 | 4 | Reliability & Recovery (State, Error, Privacy, Sync) | 6 | Not Started |
 
-**Overall Progress:** 56% (26 requirements completed: CONFIG-01-04, AUTH-01-03, DOWN-01-03, PRIV-01-02, AUDIO-01-04, TRAN-01-05, SLIDE-01-05)
+**Overall Progress:** 71% (35 requirements completed: CONFIG-01-04, AUTH-01-03, DOWN-01-03, PRIV-01-02, AUDIO-01-04, TRAN-01-05, SLIDE-01-05, LLM-01-03/05-06, COST-01-04)
 
 ---
 
@@ -231,7 +232,33 @@
 
 ---
 
+---
+
+**Phase 3 Plan 01 Completion (March 2, 2026):**
+- **Duration:** 8 minutes
+- **Tasks:** 3 completed (Token counting, LLM API integration, Cost tracking)
+- **Tests:** 38 new tests (all passing)
+- **Requirements:** 9 completed (LLM-01, LLM-02, LLM-03, LLM-05, LLM-06, COST-01, COST-02, COST-03, COST-04)
+- **Commits:** 4 atomic commits (3 features + 1 documentation)
+
+**Key Deliverables:**
+- OpenRouter API integration via OpenAI SDK with DeepSeek default
+- Token counting with tiktoken, cost estimation before API calls
+- Budget validation with 20% safety buffer (AUD $0.30/lecture)
+- Intelligent transcript truncation (sampling + binary search)
+- Exponential backoff retry logic (2-30s) for transient errors
+- Cost tracking with weekly summaries and budget alerts
+- 38 comprehensive tests covering all components
+
+**Cumulative Progress:**
+- 35/45 requirements completed (78%)
+- Phase 1: 12/12 (100%)
+- Phase 2: 14/14 (100%)
+- Phase 3: 9/14 (64% - Plan 01 done, Plan 02 awaiting)
+- Phase 4: 0/6 (0% - not started)
+
 *State updated: March 2, 2026*  
 *Phase 1 (Foundation) COMPLETE - All 4 Plans done. 12/12 Phase 1 requirements satisfied.*  
 *Phase 2 (Media Processing) COMPLETE - All 3 Plans done. 14/14 Phase 2 requirements satisfied.*  
-*Ready for Phase 3 Planning (Intelligence & Output).*
+*Phase 3 Plan 01 (LLM Integration) COMPLETE - 9/14 requirements satisfied.*  
+*Ready for Phase 3 Plan 02 (Obsidian Integration).*
