@@ -42,3 +42,12 @@ llm_model: "deepseek/deepseek-chat"
 # Budget Settings (in AUD)
 llm_budget_aud: 0.30  # Per-lecture budget (must be 0.01-1.00)
 llm_safety_buffer: 0.20  # Safety buffer as percentage (0.0-0.5, typical 0.20 for 20%)
+
+# Google Drive Sync (optional)
+gdrive_sync_enabled: false
+gdrive_sync_folder: ""
+# To enable, set gdrive_sync_enabled: true and point gdrive_sync_folder to your Google Drive local sync folder:
+# On macOS: "/Users/YourName/Google Drive/My Drive"
+# On Windows: "C:\\Users\\YourName\\Google Drive\\My Drive"
+# On Linux: "/mnt/google_drive" (or your sync mount point)
+# Note: Requires Google Drive Desktop app with local sync enabled

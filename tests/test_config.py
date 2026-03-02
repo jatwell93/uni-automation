@@ -479,6 +479,146 @@ class TestLLMSafetyBufferConfig:
                 ConfigModel(**config_dict)
 
 
+class TestGoogleDriveConfig:
+    """Tests for Google Drive sync configuration."""
+
+    def test_gdrive_sync_folder_optional_when_disabled(self):
+        """Google Drive folder optional when gdrive_sync_enabled=False."""
+        config_dict = {
+            "lecture": {
+                "url": "https://example.com/panopto",
+                "slide_path": "slides/test.pdf",
+            },
+            "paths": {
+                "cookie_file": "cookies/test.json",
+                "output_dir": "downloads/test",
+            },
+            "gdrive_sync_enabled": False,
+            "gdrive_sync_folder": None,
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            slide_path = Path(tmpdir) / "slides" / "test.pdf"
+            slide_path.parent.mkdir(parents=True, exist_ok=True)
+            slide_path.touch()
+            config_dict["lecture"]["slide_path"] = str(slide_path)
+            config_dict["paths"]["output_dir"] = str(Path(tmpdir) / "downloads")
+
+            # Should not raise
+            config = ConfigModel(**config_dict)
+            config.validate_gdrive_config()
+            assert config.gdrive_sync_enabled is False
+
+    def test_gdrive_sync_enabled_requires_folder_path(self):
+        """Google Drive folder required when gdrive_sync_enabled=True."""
+        config_dict = {
+            "lecture": {
+                "url": "https://example.com/panopto",
+                "slide_path": "slides/test.pdf",
+            },
+            "paths": {
+                "cookie_file": "cookies/test.json",
+                "output_dir": "downloads/test",
+            },
+            "gdrive_sync_enabled": True,
+            "gdrive_sync_folder": None,
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            slide_path = Path(tmpdir) / "slides" / "test.pdf"
+            slide_path.parent.mkdir(parents=True, exist_ok=True)
+            slide_path.touch()
+            config_dict["lecture"]["slide_path"] = str(slide_path)
+            config_dict["paths"]["output_dir"] = str(Path(tmpdir) / "downloads")
+
+            config = ConfigModel(**config_dict)
+            with pytest.raises(ValueError, match="folder path not set"):
+                config.validate_gdrive_config()
+
+    def test_gdrive_sync_folder_validated_exists(self):
+        """Google Drive folder must exist when enabled."""
+        config_dict = {
+            "lecture": {
+                "url": "https://example.com/panopto",
+                "slide_path": "slides/test.pdf",
+            },
+            "paths": {
+                "cookie_file": "cookies/test.json",
+                "output_dir": "downloads/test",
+            },
+            "gdrive_sync_enabled": True,
+            "gdrive_sync_folder": "/nonexistent/gdrive/path",
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            slide_path = Path(tmpdir) / "slides" / "test.pdf"
+            slide_path.parent.mkdir(parents=True, exist_ok=True)
+            slide_path.touch()
+            config_dict["lecture"]["slide_path"] = str(slide_path)
+            config_dict["paths"]["output_dir"] = str(Path(tmpdir) / "downloads")
+
+            config = ConfigModel(**config_dict)
+            with pytest.raises(ValueError, match="not found"):
+                config.validate_gdrive_config()
+
+    def test_gdrive_sync_folder_validated_writable(self):
+        """Google Drive folder must be writable when enabled."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a readable directory
+            gdrive_dir = Path(tmpdir) / "gdrive"
+            gdrive_dir.mkdir()
+
+            config_dict = {
+                "lecture": {
+                    "url": "https://example.com/panopto",
+                    "slide_path": "slides/test.pdf",
+                },
+                "paths": {
+                    "cookie_file": "cookies/test.json",
+                    "output_dir": str(Path(tmpdir) / "downloads"),
+                },
+                "gdrive_sync_enabled": True,
+                "gdrive_sync_folder": str(gdrive_dir),
+            }
+
+            slide_path = Path(tmpdir) / "slides" / "test.pdf"
+            slide_path.parent.mkdir(parents=True, exist_ok=True)
+            slide_path.touch()
+            config_dict["lecture"]["slide_path"] = str(slide_path)
+
+            config = ConfigModel(**config_dict)
+            # Should not raise when folder is writable
+            config.validate_gdrive_config()
+
+    def test_gdrive_config_example_in_yaml_valid(self):
+        """Example config with gdrive settings is valid."""
+        config_dict = {
+            "lecture": {
+                "url": "https://example.com/panopto",
+                "slide_path": "slides/test.pdf",
+            },
+            "paths": {
+                "cookie_file": "cookies/test.json",
+                "output_dir": "downloads/test",
+            },
+            "gdrive_sync_enabled": False,
+            "gdrive_sync_folder": "",
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            slide_path = Path(tmpdir) / "slides" / "test.pdf"
+            slide_path.parent.mkdir(parents=True, exist_ok=True)
+            slide_path.touch()
+            config_dict["lecture"]["slide_path"] = str(slide_path)
+            config_dict["paths"]["output_dir"] = str(Path(tmpdir) / "downloads")
+
+            # Should not raise
+            config = ConfigModel(**config_dict)
+            config.validate_gdrive_config()
+            assert config.gdrive_sync_enabled is False
+            assert config.gdrive_sync_folder == ""
+
+
 class TestExampleConfigValid:
     """Tests for the example configuration file."""
 

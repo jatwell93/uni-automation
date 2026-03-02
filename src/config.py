@@ -46,6 +46,8 @@ class ConfigModel(BaseModel):
     llm_budget_aud: float = 0.30
     llm_safety_buffer: float = 0.20
     remove_pii_from_transcript: bool = True
+    gdrive_sync_enabled: bool = False
+    gdrive_sync_folder: Optional[str] = None
 
     @field_validator("lecture", mode="before")
     @classmethod
@@ -128,6 +130,55 @@ class ConfigModel(BaseModel):
                 )
         return v
 
+    @field_validator("gdrive_sync_folder", mode="before")
+    @classmethod
+    def validate_gdrive_sync_folder(cls, v):
+        """Validate Google Drive sync folder path."""
+        if isinstance(v, str) and v:
+            if not v.strip():
+                raise ValueError("gdrive_sync_folder cannot be empty string")
+        return v
+
+    def validate_gdrive_config(self):
+        """
+        Validate Google Drive sync configuration.
+
+        If gdrive_sync_enabled=True, folder must be set and valid.
+        """
+        if self.gdrive_sync_enabled:
+            if not self.gdrive_sync_folder:
+                raise ValueError(
+                    "Google Drive sync enabled but folder path not set. "
+                    "Set gdrive_sync_folder or disable with gdrive_sync_enabled=false"
+                )
+
+            folder_path = Path(self.gdrive_sync_folder)
+
+            # Check folder exists
+            if not folder_path.exists():
+                raise ValueError(
+                    f"Google Drive sync folder not found: {self.gdrive_sync_folder}. "
+                    "Verify path or disable sync with gdrive_sync_enabled=false"
+                )
+
+            # Check folder is a directory
+            if not folder_path.is_dir():
+                raise ValueError(
+                    f"Google Drive sync path is not a directory: {self.gdrive_sync_folder}. "
+                    "Update gdrive_sync_folder or disable sync."
+                )
+
+            # Check folder is writable
+            try:
+                test_file = folder_path / ".gdrive_sync_test"
+                test_file.touch()
+                test_file.unlink()
+            except (OSError, PermissionError):
+                raise ValueError(
+                    f"Google Drive folder not writable (permissions issue): {self.gdrive_sync_folder}. "
+                    "Check permissions or update path."
+                )
+
 
 def load_config(config_file: str | Path) -> ConfigModel:
     """
@@ -156,6 +207,14 @@ def load_config(config_file: str | Path) -> ConfigModel:
 
         # Validate with Pydantic
         config = ConfigModel(**config_dict)
+
+        # Validate Google Drive config if enabled
+        try:
+            config.validate_gdrive_config()
+        except ValueError as e:
+            logger.error(f"Google Drive config validation failed: {str(e)}")
+            raise
+
         logger.info(
             f"✓ Config validated ({config.metadata.course_name}, week {config.metadata.week_number})"
         )
