@@ -7,9 +7,9 @@
 
 ### Authentication & Download
 
-- [ ] **AUTH-01**: System can load Panopto authentication cookies from config file
-- [ ] **AUTH-02**: System validates cookie freshness before download attempt (test API call succeeds)
-- [ ] **AUTH-03**: User receives clear error if cookie is invalid or expired (with recovery instructions)
+- [x] **AUTH-01**: System can load Panopto authentication cookies from config file
+- [x] **AUTH-02**: System validates cookie freshness before download attempt (test API call succeeds)
+- [x] **AUTH-03**: User receives clear error if cookie is invalid or expired (with recovery instructions)
 - [x] **DOWN-01**: System downloads Panopto video file using authenticated cookie ✓ (Plan 01-03)
 - [x] **DOWN-02**: Downloaded video file is validated for integrity (file size > 0, ffprobe succeeds) ✓ (Plan 01-03)
 - [x] **DOWN-03**: Download failures produce clear error messages (partial files cleaned up) ✓ (Plan 01-03)
@@ -84,7 +84,7 @@
 
 ### Privacy & Security
 
-- [ ] **PRIV-01**: Panopto cookies stored in config file (encrypted or with ACL recommended)
+- [x] **PRIV-01**: Panopto cookies stored in config file (encrypted or with ACL recommended)
 - [x] **PRIV-02**: Raw media (video, audio) never uploaded to external service except Google Drive (personal account) ✓ (Plan 01-03)
 - [ ] **PRIV-03**: Only transcript + slide text sent to LLM (no video/audio binaries)
 - [ ] **PRIV-04**: Transcript checked for PII before LLM call (student names, emails stripped)
@@ -131,9 +131,9 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | Phase 1 | Pending |
-| AUTH-02 | Phase 1 | Pending |
-| AUTH-03 | Phase 1 | Pending |
+| AUTH-01 | Phase 1 | Complete |
+| AUTH-02 | Phase 1 | Complete |
+| AUTH-03 | Phase 1 | Complete |
 | DOWN-01 | Phase 1 | Complete (01-03) |
 | DOWN-02 | Phase 1 | Complete (01-03) |
 | DOWN-03 | Phase 1 | Complete (01-03) |
@@ -178,7 +178,7 @@
 | ERR-03 | Phase 4 | Pending |
 | ERR-04 | Phase 4 | Pending |
 | ERR-05 | Phase 4 | Pending |
-| PRIV-01 | Phase 1 | Pending |
+| PRIV-01 | Phase 1 | Complete |
 | PRIV-02 | Phase 1 | Complete (01-03) |
 | PRIV-03 | Phase 4 | Pending |
 | PRIV-04 | Phase 4 | Pending |

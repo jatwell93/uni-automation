@@ -1,0 +1,6 @@
+lecture:
+  url: "https://example.com/panopto/viewer.aspx?id=test"
+  slide_path: "slides/test.pdf"
+paths:
+  cookie_file: "cookies/test.json"
+  output_dir: "downloads/test"

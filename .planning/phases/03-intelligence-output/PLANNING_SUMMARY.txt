@@ -1,0 +1,65 @@
+# Phase 03 Planning Summary
+
+Date: March 2, 2026
+Phase: 03-intelligence-output
+Status: Planning Complete
+
+## Structure: 2-Plan Phase with 2-Wave Execution
+
+Plan 03-01 (Wave 1): LLM Integration & Cost Control
+- Addresses 9 requirements: LLM-01, LLM-02, LLM-03, LLM-05, LLM-06, COST-01, COST-02, COST-03, COST-04
+- 3 tasks: token counting/budget/truncation, API integration + retry, cost tracking
+- ~2 hours execution time
+
+Plan 03-02 (Wave 2): Obsidian Output & Formatting
+- Depends on 03-01
+- Addresses 5 requirements: LLM-04, OBS-01, OBS-02, OBS-03, OBS-04
+- 3 tasks: markdown validation/frontmatter, vault writing, config + integration
+- ~2 hours execution time
+
+Coverage: 14/14 Phase 3 requirements (100%)
+
+## Key Design Decisions
+
+1. DeepSeek (default) + Haiku (fallback) for cost optimization
+2. Official tiktoken for token counting (no approximations)
+3. Tenacity library for retry logic (3 attempts, exponential backoff)
+4. JSON file for cost tracking (human-readable, no dependencies)
+5. Direct markdown file writes to Obsidian vault (no API needed)
+
+## Quality Gates
+
+- All 14 requirements mapped (no orphans)
+- No circular dependencies
+- Wave structure for parallelism
+- ~50% context per plan
+- 40+ tests planned (token counting, API mocking, file I/O, validation)
+- Error handling explicit throughout
+- Config fields identified (vault path, API key, model, budget, safety buffer)
+
+## Test Coverage Summary
+
+Plan 03-01:
+- TokenCounter: 4 tests
+- BudgetValidator: 3 tests
+- TranscriptTruncator: 4 tests
+- LLMGenerator: 8+ tests
+- CostTracker: 12+ tests
+
+Plan 03-02:
+- MarkdownValidator: 4 tests
+- FrontmatterGenerator: 4 tests
+- SectionValidator: 3 tests
+- VaultWriter: 8+ tests
+- ObsidianWriter: 4+ tests
+- Integration: 8+ tests
+- Config: 5+ tests
+
+Total: 80+ tests planned across both plans
+
+## Next Steps
+
+1. Execute Plan 03-01 (LLM + cost control)
+2. Execute Plan 03-02 (Obsidian output + formatting)
+3. Verify all requirements satisfied
+4. Plan Phase 04 (Reliability & Recovery)
