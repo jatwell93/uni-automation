@@ -45,6 +45,7 @@ class ConfigModel(BaseModel):
     llm_model: str = "deepseek/deepseek-chat"
     llm_budget_aud: float = 0.30
     llm_safety_buffer: float = 0.20
+    remove_pii_from_transcript: bool = True
 
     @field_validator("lecture", mode="before")
     @classmethod

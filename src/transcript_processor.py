@@ -1,9 +1,12 @@
 """Transcript processing pipeline for parsing, cleaning, and PII removal from Panopto transcripts."""
 
 import re
+import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -17,10 +20,339 @@ class TranscriptResult:
     error_message: Optional[str] = None
 
 
+@dataclass
+class PIIResult:
+    """Result of PII detection operation."""
+
+    total_found: int
+    emails_count: int
+    names_count: int
+    student_ids_count: int
+    phone_numbers_count: int
+    emails: List[str]
+    names: List[str]
+    student_ids: List[str]
+    phone_numbers: List[str]
+
+
 class TranscriptError(Exception):
     """Exception raised when transcript processing fails."""
 
     pass
+
+
+class PIIDetector:
+    """Detect and optionally remove personally identifying information from text."""
+
+    # Common first and last names (conservative list for student names)
+    COMMON_STUDENT_NAMES = {
+        # Common first names
+        "john",
+        "jane",
+        "james",
+        "mary",
+        "robert",
+        "michael",
+        "william",
+        "david",
+        "richard",
+        "joseph",
+        "thomas",
+        "charles",
+        "patricia",
+        "jennifer",
+        "linda",
+        "barbara",
+        "elizabeth",
+        "susan",
+        "jessica",
+        "sarah",
+        "karen",
+        "nancy",
+        "betty",
+        "margaret",
+        "sandra",
+        "ashley",
+        "kimberly",
+        "emily",
+        "donna",
+        "michelle",
+        "dorothy",
+        "carol",
+        "amanda",
+        "melissa",
+        "deborah",
+        "stephanie",
+        "rebecca",
+        "sharon",
+        "laura",
+        "cynthia",
+        "katherine",
+        "amy",
+        "angela",
+        "shirley",
+        "anna",
+        "brenda",
+        "pamela",
+        "nicole",
+        "samantha",
+        "katherine",
+        "christine",
+        "debra",
+        "rachel",
+        "catherine",
+        "carolyn",
+        "janet",
+        "ruth",
+        "marie",
+        "kayla",
+        "alexis",
+        "lori",
+        "alice",
+        "jean",
+        "abigail",
+        "sophia",
+        "julia",
+        "ruby",
+        "hannah",
+        "olivia",
+        "charlotte",
+        "mia",
+        "amelia",
+        # Common last names
+        "smith",
+        "johnson",
+        "williams",
+        "brown",
+        "jones",
+        "garcia",
+        "miller",
+        "davis",
+        "rodriguez",
+        "martinez",
+        "hernandez",
+        "lopez",
+        "gonzalez",
+        "wilson",
+        "anderson",
+        "thomas",
+        "taylor",
+        "moore",
+        "jackson",
+        "martin",
+        "lee",
+        "perez",
+        "thompson",
+        "white",
+        "harris",
+        "sanchez",
+        "clark",
+        "ramirez",
+        "lewis",
+        "robinson",
+        "walker",
+        "young",
+        "allen",
+        "king",
+        "wright",
+        "scott",
+        "torres",
+        "peterson",
+        "phillips",
+        "campbell",
+        "parker",
+        "evans",
+        "edwards",
+        "collins",
+        "reyes",
+        "stewart",
+        "morris",
+        "morales",
+        "murphy",
+        "cook",
+        "rogers",
+        "gutierrez",
+        "ortiz",
+        "morgan",
+        "cooper",
+        "peterson",
+        "rice",
+        "howard",
+        "ward",
+        "cox",
+        "richardson",
+    }
+
+    # Email regex pattern
+    EMAIL_PATTERN = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
+
+    # Student ID patterns: 7-8 digits, optional S prefix
+    STUDENT_ID_PATTERN = r"\b[Ss]?\d{7,8}\b"
+
+    # Phone number patterns
+    US_PHONE_PATTERN = r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b"
+    INTL_PHONE_PATTERN = r"\+\d{1,3}\s?\d{9,}"
+
+    @staticmethod
+    def detect_pii(text: str) -> PIIResult:
+        """
+        Detect PII in text using pattern matching.
+
+        Args:
+            text: Text to scan for PII
+
+        Returns:
+            PIIResult with detected PII organized by category
+        """
+        if not text or not isinstance(text, str):
+            return PIIResult(
+                total_found=0,
+                emails_count=0,
+                names_count=0,
+                student_ids_count=0,
+                phone_numbers_count=0,
+                emails=[],
+                names=[],
+                student_ids=[],
+                phone_numbers=[],
+            )
+
+        try:
+            # Detect emails
+            emails = list(set(re.findall(PIIDetector.EMAIL_PATTERN, text)))
+
+            # Detect student IDs
+            student_ids = list(set(re.findall(PIIDetector.STUDENT_ID_PATTERN, text)))
+
+            # Detect student names (conservative: match common names)
+            names = []
+            words = re.findall(r"\b[A-Z][a-z]+\b", text)  # Capitalized words
+            for word in words:
+                if word.lower() in PIIDetector.COMMON_STUDENT_NAMES:
+                    if word not in names:
+                        names.append(word)
+
+            # Detect phone numbers
+            phone_numbers = []
+            us_phones = list(set(re.findall(PIIDetector.US_PHONE_PATTERN, text)))
+            intl_phones = list(set(re.findall(PIIDetector.INTL_PHONE_PATTERN, text)))
+            phone_numbers = us_phones + intl_phones
+
+            total_found = (
+                len(emails) + len(names) + len(student_ids) + len(phone_numbers)
+            )
+
+            return PIIResult(
+                total_found=total_found,
+                emails_count=len(emails),
+                names_count=len(names),
+                student_ids_count=len(student_ids),
+                phone_numbers_count=len(phone_numbers),
+                emails=emails,
+                names=names,
+                student_ids=student_ids,
+                phone_numbers=phone_numbers,
+            )
+
+        except Exception as e:
+            logger.warning(f"Error during PII detection: {e}")
+            return PIIResult(
+                total_found=0,
+                emails_count=0,
+                names_count=0,
+                student_ids_count=0,
+                phone_numbers_count=0,
+                emails=[],
+                names=[],
+                student_ids=[],
+                phone_numbers=[],
+            )
+
+    @staticmethod
+    def remove_pii(text: str, categories: Optional[List[str]] = None) -> str:
+        """
+        Remove PII from text by replacing with [REDACTED].
+
+        Args:
+            text: Text to clean
+            categories: List of PII categories to remove. Default: ["emails", "student_ids", "names"]
+
+        Returns:
+            Text with PII replaced by [REDACTED]
+        """
+        if categories is None:
+            categories = ["emails", "student_ids", "names"]
+
+        if not text or not isinstance(text, str):
+            return text
+
+        try:
+            result = text
+
+            # Remove emails
+            if "emails" in categories:
+                result = re.sub(PIIDetector.EMAIL_PATTERN, "[REDACTED]", result)
+
+            # Remove student IDs
+            if "student_ids" in categories:
+                result = re.sub(PIIDetector.STUDENT_ID_PATTERN, "[REDACTED]", result)
+
+            # Remove student names (conservative: only remove common names)
+            if "names" in categories:
+                words = re.findall(r"\b[A-Z][a-z]+\b", result)
+                for word in words:
+                    if word.lower() in PIIDetector.COMMON_STUDENT_NAMES:
+                        result = re.sub(
+                            r"\b" + re.escape(word) + r"\b", "[REDACTED]", result
+                        )
+
+            # Remove phone numbers (optional, too risky for false positives)
+            # if "phone_numbers" in categories:
+            #     result = re.sub(PIIDetector.US_PHONE_PATTERN, "[REDACTED]", result)
+            #     result = re.sub(PIIDetector.INTL_PHONE_PATTERN, "[REDACTED]", result)
+
+            # Normalize whitespace (replace multiple [REDACTED] with single one)
+            result = re.sub(r"\[REDACTED\]\s+\[REDACTED\]", "[REDACTED]", result)
+
+            return result
+
+        except Exception as e:
+            logger.warning(f"Error during PII removal: {e}")
+            return text
+
+    @staticmethod
+    def log_pii_findings(pii_result: PIIResult, config=None):
+        """
+        Log PII detection findings to logger.
+
+        Args:
+            pii_result: PIIResult from detect_pii()
+            config: ConfigModel with remove_pii_from_transcript flag (optional)
+        """
+        if pii_result.total_found == 0:
+            logger.info("✓ No PII detected in transcript")
+            return
+
+        message = (
+            f"PII Detection: Found {pii_result.total_found} items "
+            f"({pii_result.emails_count} emails, "
+            f"{pii_result.student_ids_count} student IDs, "
+            f"{pii_result.names_count} names"
+        )
+
+        # Check if removal is enabled
+        if config and hasattr(config, "remove_pii_from_transcript"):
+            if config.remove_pii_from_transcript:
+                logger.warning(message)
+                logger.info("✓ PII will be removed from transcript before LLM call")
+            else:
+                logger.warning(message)
+                logger.warning(
+                    "⚠ PII detected in transcript. "
+                    "Set remove_pii_from_transcript=true in config to remove before LLM call"
+                )
+        else:
+            logger.warning(message)
 
 
 # Module-level helper functions for backward compatibility
