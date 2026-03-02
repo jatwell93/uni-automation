@@ -84,7 +84,13 @@
 4. System writes generated notes to Obsidian vault at configured path (e.g., `/Business Analytics/Week_05.md`) with proper Markdown formatting (valid for Obsidian rendering)
 5. User receives clear error message if LLM API times out or fails; instructions to retry or manually complete notes
 
-**Plans:** TBD
+**Plans:** 2 plans in 2 waves
+
+**Wave 1 (Parallel with Phase 2):**
+- [ ] 03-01-PLAN.md — LLM integration & cost control (LLM-01, LLM-02, LLM-03, LLM-05, LLM-06, COST-01, COST-02, COST-03, COST-04)
+
+**Wave 2 (Depends on Wave 1):**
+- [ ] 03-02-PLAN.md — Obsidian output & formatting (LLM-04, OBS-01, OBS-02, OBS-03, OBS-04)
 
 ---
 
@@ -113,7 +119,7 @@
 |-------|----------------|--------|-----------|
 | 1. Foundation | 4/4 | Complete | ✓ |
 | 2. Media Processing | 1/3 | In Progress | ⊙ |
-| 3. Intelligence & Output | 0/? | Not started | — |
+| 3. Intelligence & Output | 0/2 | Planning | ⊙ |
 | 4. Reliability & Recovery | 0/? | Not started | — |
 
 ---
