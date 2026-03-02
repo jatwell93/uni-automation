@@ -141,3 +141,49 @@ class CostTrackingEntry:
     output_tokens: int
     model: str
     cost_aud: float
+
+
+@dataclass
+class ObsidianNote:
+    """Structured note metadata for Obsidian."""
+
+    course: str
+    week: int
+    date: str
+    panopto_url: str
+    llm_content: str
+    title: str = ""
+    frontmatter: str = ""
+
+    def to_markdown(self) -> str:
+        """
+        Combine frontmatter + title header + content.
+
+        Returns:
+            Complete markdown note as string
+        """
+        # Import here to avoid circular dependencies
+        from src.obsidian_writer import FrontmatterGenerator
+
+        # Generate frontmatter if not provided
+        if not self.frontmatter:
+            fm_generator = FrontmatterGenerator()
+            self.frontmatter = fm_generator.generate_frontmatter(
+                {
+                    "course": self.course,
+                    "week": self.week,
+                    "date": self.date,
+                    "panopto_url": self.panopto_url,
+                    "title": self.title,
+                }
+            )
+
+        # Build complete markdown
+        markdown = self.frontmatter
+
+        if self.title:
+            markdown += f"\n# {self.title}\n\n"
+
+        markdown += self.llm_content
+
+        return markdown
