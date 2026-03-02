@@ -111,3 +111,33 @@ class SlideExtractionError(Exception):
     """Exception raised when slide extraction fails."""
 
     pass
+
+
+@dataclass
+class LLMResult:
+    """Result of an LLM generation operation."""
+
+    status: str  # "success", "error", "truncated"
+    content: Optional[str] = None
+    input_tokens: int = 0
+    output_tokens: int = 0
+    error_message: Optional[str] = None
+    cost_aud: float = 0.0
+
+
+class LLMError(Exception):
+    """Exception raised when LLM operations fail."""
+
+    pass
+
+
+@dataclass
+class CostTrackingEntry:
+    """Record of a lecture cost tracking entry."""
+
+    lecture: str
+    timestamp: str
+    input_tokens: int
+    output_tokens: int
+    model: str
+    cost_aud: float
