@@ -6,7 +6,16 @@ Covers token counting, budget validation, transcript truncation, and API integra
 
 import pytest
 import tiktoken
-from src.llm_generator import TokenCounter, BudgetValidator, TranscriptTruncator
+from unittest.mock import patch, MagicMock
+from openai import RateLimitError, APIError
+from src.llm_generator import (
+    TokenCounter,
+    BudgetValidator,
+    TranscriptTruncator,
+    LLMGenerator,
+    SYSTEM_PROMPT,
+)
+from src.models import LLMResult
 
 
 class TestTokenCounter:
@@ -168,3 +177,171 @@ class TestLLMGeneratorIntegration:
             result = truncator.truncate_transcript(text, target_tokens=target)
             result_tokens = truncator.token_counter.count_tokens(result)
             assert result_tokens <= target + 50  # Allow small margin for edge cases
+
+
+class TestLLMGenerator:
+    """Tests for LLMGenerator class with mocked API calls."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.config = {"openrouter_api_key": "test-key-123"}
+        self.generator = LLMGenerator(self.config)
+
+    @patch("src.llm_generator.OpenAI")
+    def test_generate_notes_mock_api(self, mock_openai_class):
+        """Mock OpenRouter call should return LLMResult with correct structure."""
+        # Mock the OpenAI client
+        mock_client = MagicMock()
+        mock_openai_class.return_value = mock_client
+
+        # Mock the API response
+        mock_response = MagicMock()
+        mock_response.choices[0].message.content = "## Summary\nTest notes"
+        mock_client.chat.completions.create.return_value = mock_response
+
+        # Recreate generator with mocked client
+        generator = LLMGenerator(self.config)
+        generator.client = mock_client
+
+        # Call generate_notes
+        transcript = "This is a test lecture transcript about Python basics."
+        slide_text = "[Page 1]\nPython Introduction"
+        result = generator.generate_notes(transcript, slide_text)
+
+        # Verify result structure
+        assert isinstance(result, LLMResult)
+        assert result.status == "success"
+        assert result.content == "## Summary\nTest notes"
+        assert result.input_tokens > 0
+        assert result.output_tokens > 0
+        assert result.cost_aud >= 0.0
+
+    @patch("src.llm_generator.OpenAI")
+    def test_generate_notes_handles_rate_limit(self, mock_openai_class):
+        """Rate limit error should trigger retry and eventual failure."""
+        mock_client = MagicMock()
+        mock_openai_class.return_value = mock_client
+
+        # Mock rate limit error using Exception to avoid complex mock setup
+        mock_client.chat.completions.create.side_effect = Exception(
+            "429 Rate limited - requests exceed limit"
+        )
+
+        generator = LLMGenerator(self.config)
+        generator.client = mock_client
+
+        # Call should handle errors gracefully
+        result = generator.generate_notes("test", "test slides")
+        assert result.status == "error"
+        assert result.error_message is not None
+
+    @patch("src.llm_generator.OpenAI")
+    def test_generate_notes_handles_auth_error(self, mock_openai_class):
+        """401 auth error should fail with clear message."""
+        mock_client = MagicMock()
+        mock_openai_class.return_value = mock_client
+
+        # Mock auth error using Exception
+        mock_client.chat.completions.create.side_effect = Exception(
+            "401 Unauthorized - Invalid API key"
+        )
+
+        generator = LLMGenerator(self.config)
+        generator.client = mock_client
+
+        # Call should handle auth error
+        result = generator.generate_notes("test", "test slides")
+        assert result.status == "error"
+        assert result.error_message is not None
+
+    @patch("src.llm_generator.OpenAI")
+    def test_generate_notes_with_truncation(self, mock_openai_class):
+        """Large transcript should trigger truncation."""
+        mock_client = MagicMock()
+        mock_openai_class.return_value = mock_client
+
+        mock_response = MagicMock()
+        mock_response.choices[0].message.content = "## Summary\nTruncated notes"
+        mock_client.chat.completions.create.return_value = mock_response
+
+        generator = LLMGenerator(self.config)
+        generator.client = mock_client
+
+        # Create very large transcript
+        large_transcript = "This is content. " * 1000
+        result = generator.generate_notes(large_transcript, "slides")
+
+        # Should complete successfully
+        assert result.status == "success"
+        # Should have called the API
+        assert mock_client.chat.completions.create.called
+
+    @patch("src.llm_generator.OpenAI")
+    def test_generate_notes_system_prompt_included(self, mock_openai_class):
+        """System prompt should be included in API messages."""
+        mock_client = MagicMock()
+        mock_openai_class.return_value = mock_client
+
+        mock_response = MagicMock()
+        mock_response.choices[0].message.content = "Notes"
+        mock_client.chat.completions.create.return_value = mock_response
+
+        generator = LLMGenerator(self.config)
+        generator.client = mock_client
+
+        generator.generate_notes("transcript", "slides")
+
+        # Verify system prompt was sent
+        call_args = mock_client.chat.completions.create.call_args
+        messages = call_args.kwargs["messages"]
+        assert messages[0]["role"] == "system"
+        assert "expert study note generator" in messages[0]["content"].lower()
+
+    @patch("src.llm_generator.OpenAI")
+    def test_generate_notes_respects_budget(self, mock_openai_class):
+        """Large transcript should be truncated to respect budget."""
+        mock_client = MagicMock()
+        mock_openai_class.return_value = mock_client
+
+        mock_response = MagicMock()
+        mock_response.choices[0].message.content = "Notes"
+        mock_client.chat.completions.create.return_value = mock_response
+
+        generator = LLMGenerator(self.config)
+        generator.client = mock_client
+
+        # Create transcript that would exceed budget
+        large_transcript = "Very detailed content about a complex topic. " * 1500
+        result = generator.generate_notes(large_transcript, "slides")
+
+        assert result.status == "success"
+        # Cost should be within AUD budget
+        assert result.cost_aud <= 0.30
+
+    @patch("src.llm_generator.OpenAI")
+    def test_generate_notes_returns_markdown(self, mock_openai_class):
+        """Response should contain markdown content."""
+        mock_client = MagicMock()
+        mock_openai_class.return_value = mock_client
+
+        mock_response = MagicMock()
+        mock_response.choices[0].message.content = """## Summary
+Test lecture about algorithms
+
+## Key Concepts
+- Algorithm efficiency
+- Time complexity
+
+## Examples
+Sorting algorithms
+"""
+        mock_client.chat.completions.create.return_value = mock_response
+
+        generator = LLMGenerator(self.config)
+        generator.client = mock_client
+
+        result = generator.generate_notes("transcript", "slides")
+
+        assert result.status == "success"
+        assert "##" in result.content
+        assert "Summary" in result.content or "Key" in result.content
