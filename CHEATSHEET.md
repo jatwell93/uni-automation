@@ -55,11 +55,11 @@ python process_lecture.py --course MIS271 --week 1 --session prac
 
 | Argument | Example | Purpose |
 |----------|---------|---------|
-| `--course` | `MIS271` | Which course |
-| `--week` | `1` | Which week (1-11) |
+| `--course` | `MIS271`, `CHM101`, `BIO333` | Any Deakin course (3 letters + 3 digits) |
+| `--week` | `1` | Which week (1-11, or custom for known courses) |
 | `--session` | `lecture` or `prac` | Lecture or practical |
 
-## By Course
+## By Course (Any Deakin Course)
 
 ```bash
 # MIS271 - Business Intelligence & Data Warehousing
@@ -67,6 +67,15 @@ python process_lecture.py --course MIS271 --week 1 --session lecture
 
 # MIS999 - Artificial Intelligence for Business
 python process_lecture.py --course MIS999 --week 2 --session prac
+
+# CHM101 - Any Chemistry course
+python process_lecture.py --course CHM101 --week 3 --session lecture
+
+# BIO333 - Any Biology course
+python process_lecture.py --create-all BIO333
+
+# Any valid Deakin course (3 letters + 3 digits)
+python process_lecture.py --course ENG202 --week 5
 ```
 
 ## Check Progress
@@ -141,8 +150,8 @@ python process_lecture.py --help
 
 | Error | Solution |
 |-------|----------|
-| "Unknown course code" | Use `MIS271` or `MIS999` |
-| "Invalid week number" | Use 1-11 |
+| "Invalid course code format" | Use format: 3 letters + 3 digits (e.g., `MIS271`, `CHM101`) |
+| "Invalid week number" | Use 1-11 (default for unknown courses) |
 | "Video not found" | Run `--create`, download video, try again |
 | Not sure what's where | Run `--list` or `--stats` |
 

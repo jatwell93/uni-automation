@@ -55,7 +55,10 @@ Next steps:
 #### Create all folders for an entire course
 
 ```bash
+# Any valid Deakin course code (3 letters + 3 digits)
 python process_lecture.py --create-all MIS271
+python process_lecture.py --create-all CHM101
+python process_lecture.py --create-all BIO333
 ```
 
 **Output:**
@@ -69,15 +72,16 @@ Folder structure:
   downloads/MIS271_week_01_prac/week_01_prac/
   downloads/MIS271_week_02_lecture/week_02_lecture/
   ... (continues for all 11 weeks)
-
-Next steps:
-1. Download videos using Panopto-Video-DL
-2. Save to corresponding folders as 'video.mp4'
-3. Export transcripts and save as 'transcript.txt' (optional)
-4. Use 'python process_lecture.py --stats' to track progress
 ```
 
 **When to use:** At the beginning of the trimester to set up everything
+
+**Note:** Works with ANY Deakin course code (3 letters + 3 digits). Examples:
+- `MIS271`, `MIS999` (Management Information Systems)
+- `CHM101`, `CHM201` (Chemistry)
+- `BIO333` (Biology)
+- `ENG202` (Engineering)
+- `PHY101` (Physics)
 
 ---
 
@@ -304,9 +308,17 @@ done
 
 | Argument | Type | Default | Description |
 |----------|------|---------|-------------|
-| `--course` | string | - | Course code (MIS271, MIS999) |
-| `--week` | integer | - | Week number (1-11) |
+| `--course` | string | - | Course code (any Deakin course: 3 letters + 3 digits) |
+| `--week` | integer | - | Week number (1-11 for most courses) |
 | `--session` | string | "lecture" | Session type (lecture, prac) |
+
+**Valid course codes:**
+- `MIS271`, `MIS999` (Management Information Systems)
+- `CHM101`, `CHM201` (Chemistry)
+- `BIO333` (Biology)
+- `ENG202` (Engineering)
+- `PHY101` (Physics)
+- Any other valid Deakin course code (3 letters + 3 digits)
 
 ### Special Commands
 
@@ -334,15 +346,18 @@ python process_lecture.py [COURSE] [WEEK] [SESSION]
 
 ## Error Handling
 
-### Unknown course code
+### Invalid course code format
 
 ```bash
 $ python process_lecture.py --create INVALID 1
 
-[*] Unknown course code: INVALID. Available: MIS271, MIS999
+[*] Invalid course code format: INVALID
+Course codes must be 3 letters + 3 digits (e.g., MIS271, CHM101)
 ```
 
-**Solution:** Use valid course codes (MIS271 or MIS999)
+**Solution:** Use valid Deakin course codes with format: 3 letters + 3 digits
+- Valid: `MIS271`, `CHM101`, `BIO333`, `ENG202`, `PHY101`
+- Invalid: `INVALID`, `MIS27` (too few digits), `MIS2701` (too many)
 
 ---
 
@@ -443,11 +458,14 @@ python process_lecture.py --course MIS271 --week 1 --session lecture
 python process_lecture.py --course MIS271 --week 1 --session prac
 ```
 
-**Q: What if I forget the course code?**
-A: The valid codes are **MIS271** and **MIS999**. Use `--stats` or `--list` to see what's available.
+**Q: What course codes are supported?**
+A: Any valid Deakin course code (3 letters + 3 digits):
+- MIS271, MIS999 (pre-configured for 11 weeks)
+- CHM101, CHM201, BIO333, ENG202, PHY101 (auto-configured with defaults)
+- Any other course code in this format
 
-**Q: Can I add more courses?**
-A: Yes! Edit `src/course_manager.py` and add to the `COURSES` dictionary.
+**Q: Can I customize courses?**
+A: Yes! Edit `src/course_manager.py` and add to the `KNOWN_COURSES` dictionary to specify custom week counts or names.
 
 ---
 
