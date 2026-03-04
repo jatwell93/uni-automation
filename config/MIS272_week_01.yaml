@@ -1,0 +1,53 @@
+# config/example_week_05.yaml
+# Example configuration for processing a lecture
+
+lecture:
+  # Full URL to Panopto video viewer page
+  # Find this by navigating to the lecture in Panopto and copying the URL from your browser
+  url: "https://deakin.au.panopto.com/Panopto/Pages/Viewer.aspx?id=130814de-7e5f-4c60-b5a5-b3f9003a901a"
+
+  # Path to PDF slides file (must exist)
+  # Use forward slashes (/) even on Windows; pathlib handles conversion automatically
+  slide_path: "slides/MIS271_week_01.pdf"
+
+paths:
+  # Path to cookies JSON file (browser export)
+  # Extract from browser: Chrome DevTools (F12) → Storage → Cookies → Select all → Copy → Save as JSON
+  # See README.md for detailed instructions
+  cookie_file: "cookies/panopto.json"
+
+  # Directory where downloaded files will be saved
+  # Must exist and be writable; created automatically if missing
+  output_dir: "downloads/MIS271_week_01"
+
+metadata:
+  # Optional fields (can be omitted; sensible defaults used)
+  course_name: "MIS271 - Business Intelligence And Data Warehousing"
+  week_number: 1
+  lecturer_name: "Prof. Smith"
+  # timestamp: "2026-03-05 09:00"  # Optional; generated from current time if omitted
+
+# Obsidian Integration (required for note output)
+obsidian_vault_path: "C:\\Users\\josha\\OneDrive\\Documents\\Obsidian Vault\\University notes\\Trimester_1_26"
+obsidian_note_subfolder: "Lectures"
+
+# LLM Configuration (required for note generation)
+# Get OpenRouter API key from https://openrouter.ai
+openrouter_api_key: "OPENROUTER_API_KEY"
+
+# LLM Model Selection
+# Options: deepseek/deepseek-chat (cheaper), claude-3-haiku-20240307 (faster), gpt-4-turbo (more capable)
+llm_model: "deepseek/deepseek-chat"
+
+# Budget Settings (in AUD)
+llm_budget_aud: 0.30 # Per-lecture budget (must be 0.01-1.00)
+llm_safety_buffer: 0.20 # Safety buffer as percentage (0.0-0.5, typical 0.20 for 20%)
+
+# Google Drive Sync (optional)
+gdrive_sync_enabled: false
+gdrive_sync_folder: ""
+# To enable, set gdrive_sync_enabled: true and point gdrive_sync_folder to your Google Drive local sync folder:
+# On macOS: "/Users/YourName/Google Drive/My Drive"
+# On Windows: "C:\\Users\\YourName\\Google Drive\\My Drive"
+# On Linux: "/mnt/google_drive" (or your sync mount point)
+# Note: Requires Google Drive Desktop app with local sync enabled

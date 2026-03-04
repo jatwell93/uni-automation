@@ -1,11 +1,16 @@
 """Configuration management using Pydantic and YAML."""
 
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 
 import yaml
+from dotenv import load_dotenv
 from pydantic import BaseModel, field_validator, ValidationError
+
+# Load .env file at the module level
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -98,10 +103,21 @@ class ConfigModel(BaseModel):
     @field_validator("openrouter_api_key", mode="before")
     @classmethod
     def validate_openrouter_api_key(cls, v):
-        """Validate OpenRouter API key."""
+        """Validate OpenRouter API key, allowing for environment variable substitution."""
         if isinstance(v, str) and v:
+            # Check if it looks like an environment variable placeholder
+            if v.isupper() and "_" in v:
+                env_val = os.getenv(v)
+                if env_val:
+                    v = env_val
+                else:
+                    logger.warning(
+                        f"Environment variable {v} not found in .env or system"
+                    )
+
             if not v.strip():
                 raise ValueError("openrouter_api_key cannot be empty string")
+
             if len(v) < 20:
                 logger.warning(
                     f"openrouter_api_key seems short ({len(v)} chars), may be invalid"

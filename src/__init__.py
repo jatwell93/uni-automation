@@ -26,6 +26,7 @@ from src.slide_extractor import (
     extract_slide_text,
     detect_image_slides,
 )
+from dotenv import load_dotenv
 
 __all__ = [
     "ConfigModel",
