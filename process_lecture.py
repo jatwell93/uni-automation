@@ -141,17 +141,18 @@ def create_session_folders(
 def create_all_course_folders(course_manager: CourseManager, course_code: str):
     """Create all folders for a course (11 weeks × 2 sessions)."""
 
+    # Validate course code format
+    if not course_manager.is_valid_course_code(course_code):
+        print_progress("✗", f"Invalid course code format: {course_code}")
+        print("Course codes must be 3 letters + 3 digits (e.g., MIS271, CHM101)")
+        return 1
+
     try:
-        # Validate course code
-        if course_code not in course_manager.COURSES:
-            print_progress("✗", f"Unknown course code: {course_code}")
-            print(f"Available: {', '.join(course_manager.COURSES.keys())}")
-            return 1
+        course_info = course_manager._get_course_info(course_code)
     except ValueError as e:
         print_progress("✗", str(e))
         return 1
 
-    course_info = course_manager.COURSES[course_code]
     weeks = course_info["weeks"]
 
     print_progress(
