@@ -94,6 +94,100 @@ def show_statistics(course_manager: CourseManager):
     print()
 
 
+def create_session_folders(
+    course_manager: CourseManager, course_code: str, week_number: int
+):
+    """Create folders for both lecture and practical sessions for a week."""
+
+    try:
+        session_manager = course_manager.get_course_session(
+            course_code, week_number, "lecture"
+        )
+    except ValueError as e:
+        print_progress("✗", str(e))
+        return 1
+
+    print_progress("🔧", f"Creating folders for {course_code} Week {week_number}")
+    print()
+
+    created_folders = []
+
+    for session_type in ["lecture", "prac"]:
+        session_dir = course_manager.get_session_path(
+            course_code, week_number, session_type
+        )
+        session = course_manager.get_course_session(
+            course_code, week_number, session_type
+        )
+
+        created_folders.append(session_dir)
+        print_progress("✓", f"Created: {session_dir}")
+
+    print()
+    print_progress("✓", "Folders created successfully")
+    print()
+    print("Next steps:")
+    print("1. Download video using Panopto-Video-DL")
+    print("2. Save to one of the folders created above as 'video.mp4'")
+    print("3. Export transcript and save as 'transcript.txt' (optional)")
+    print(
+        "4. Run: python process_lecture.py --course", course_code, "--week", week_number
+    )
+    print()
+
+    return 0
+
+
+def create_all_course_folders(course_manager: CourseManager, course_code: str):
+    """Create all folders for a course (11 weeks × 2 sessions)."""
+
+    try:
+        # Validate course code
+        if course_code not in course_manager.COURSES:
+            print_progress("✗", f"Unknown course code: {course_code}")
+            print(f"Available: {', '.join(course_manager.COURSES.keys())}")
+            return 1
+    except ValueError as e:
+        print_progress("✗", str(e))
+        return 1
+
+    course_info = course_manager.COURSES[course_code]
+    weeks = course_info["weeks"]
+
+    print_progress(
+        "🔧", f"Creating all folders for {course_code} ({weeks} weeks × 2 sessions)"
+    )
+    print()
+
+    total_created = 0
+
+    for week_num in range(1, weeks + 1):
+        for session_type in ["lecture", "prac"]:
+            session_dir = course_manager.get_session_path(
+                course_code, week_num, session_type
+            )
+            total_created += 1
+
+    print_progress(
+        "✓", f"Created {total_created} folder structures ({weeks} weeks × 2 sessions)"
+    )
+    print()
+    print("Folder structure:")
+    print(f"  downloads/{course_code}_week_01_lecture/week_01_lecture/")
+    print(f"  downloads/{course_code}_week_01_prac/week_01_prac/")
+    print(f"  downloads/{course_code}_week_02_lecture/week_02_lecture/")
+    print(f"  ... (continues for all {weeks} weeks)")
+    print()
+    print("Next steps:")
+    print("1. Download videos using Panopto-Video-DL")
+    print("2. Save to corresponding folders as 'video.mp4'")
+    print("3. Export transcripts and save as 'transcript.txt' (optional)")
+    print("4. Use 'python process_lecture.py --stats' to track progress")
+    print()
+
+    return 0
+
+
 def process_session(course_code: str, week_number: int, session_type: str = "lecture"):
     """Process a single lecture/practical session."""
 
@@ -171,15 +265,25 @@ def main():
         description="Process manually downloaded Panopto lectures",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Examples:
+Examples (Positional arguments):
   python process_lecture.py MIS271 1              # Process week 1 lecture (default)
   python process_lecture.py MIS271 1 lecture      # Explicit lecture
   python process_lecture.py MIS271 1 prac         # Process week 1 practical
+
+Examples (Named arguments - recommended):
+  python process_lecture.py --course MIS271 --week 1                # Lecture (default)
+  python process_lecture.py --course MIS271 --week 1 --session lecture  # Explicit
+  python process_lecture.py --course MIS271 --week 1 --session prac     # Practical
+
+Examples (Other commands):
   python process_lecture.py --list                # Show available sessions
   python process_lecture.py --stats               # Show statistics
+  python process_lecture.py --create MIS271 1     # Create folders for week 1
+  python process_lecture.py --create-all MIS271   # Create all folders for course
         """,
     )
 
+    # Positional arguments (for backwards compatibility)
     parser.add_argument(
         "course", nargs="?", help="Course code (e.g., MIS271, MIS999) or --list/--stats"
     )
@@ -191,11 +295,37 @@ Examples:
         choices=["lecture", "prac"],
         help="Session type (default: lecture)",
     )
+
+    # Named arguments (recommended)
+    parser.add_argument(
+        "--course", dest="course_flag", help="Course code (e.g., MIS271, MIS999)"
+    )
+    parser.add_argument("--week", type=int, dest="week_flag", help="Week number (1-11)")
+    parser.add_argument(
+        "--session",
+        choices=["lecture", "prac"],
+        default="lecture",
+        dest="session_flag",
+        help="Session type (default: lecture)",
+    )
+
+    # Special commands
     parser.add_argument(
         "--list", action="store_true", help="List all available downloaded sessions"
     )
     parser.add_argument(
         "--stats", action="store_true", help="Show statistics about downloaded sessions"
+    )
+    parser.add_argument(
+        "--create",
+        nargs=2,
+        metavar=("COURSE", "WEEK"),
+        help="Create folders for a specific session (e.g., --create MIS271 1)",
+    )
+    parser.add_argument(
+        "--create-all",
+        metavar="COURSE",
+        help="Create all folders for a course (11 weeks × 2 sessions)",
     )
 
     args = parser.parse_args()
@@ -203,7 +333,7 @@ Examples:
     # Initialize course manager
     course_manager = CourseManager(downloads_root="downloads")
 
-    # Handle special arguments
+    # Handle special commands
     if args.list or args.course == "--list":
         show_available_sessions(course_manager)
         return 0
@@ -212,13 +342,35 @@ Examples:
         show_statistics(course_manager)
         return 0
 
-    # Check that course and week are provided
-    if not args.course or not args.week:
+    if args.create:
+        course_code, week_str = args.create
+        try:
+            week_num = int(week_str)
+            return create_session_folders(course_manager, course_code, week_num)
+        except (ValueError, IndexError):
+            print_progress("✗", f"Invalid arguments for --create: {args.create}")
+            return 1
+
+    if args.create_all:
+        return create_all_course_folders(course_manager, args.create_all)
+
+    # Determine which arguments were provided
+    if args.course_flag and args.week_flag:
+        # Named arguments provided
+        course_code = args.course_flag
+        week_num = args.week_flag
+        session_type = args.session_flag
+    elif args.course and args.week:
+        # Positional arguments provided
+        course_code = args.course
+        week_num = args.week
+        session_type = args.session
+    else:
         parser.print_help()
         return 1
 
     # Process the session
-    return process_session(args.course, args.week, args.session)
+    return process_session(course_code, week_num, session_type)
 
 
 if __name__ == "__main__":
