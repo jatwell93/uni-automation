@@ -239,11 +239,7 @@ def process_lecture(
 
     # Validate markdown (warn only — LLM output may vary slightly)
     validator = MarkdownValidator()
-    validation_result = validator.is_valid_markdown(complete_note)
-    try:
-        is_valid, issues = validation_result
-    except (TypeError, ValueError):
-        is_valid, issues = True, []
+    is_valid, issues = validator.is_valid_markdown(complete_note)
     if not is_valid:
         _print("~", f"Markdown validation warnings: {', '.join(issues)}")
 
@@ -277,11 +273,7 @@ def process_lecture(
         cost_aud=llm_result.cost_aud,
     )
 
-    budget_result = tracker.alert_if_over_budget(llm_result.cost_aud)
-    try:
-        over_budget, budget_msg = budget_result
-    except (TypeError, ValueError):
-        over_budget, budget_msg = False, ""
+    over_budget, budget_msg = tracker.alert_if_over_budget(llm_result.cost_aud)
     if budget_msg:
         print(f"  {budget_msg}")
 
@@ -328,7 +320,7 @@ Examples:
     )
     parser.add_argument(
         "--urls",
-        nargs="*",
+        nargs="+",
         default=[],
         metavar="URL",
         help="External URLs to fetch and include as reading context (space-separated)",

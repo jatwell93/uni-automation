@@ -67,9 +67,9 @@ class TestProcessLectureUrlFetching:
              patch("generate_notes.url_to_filename", return_value="reading_example.md"), \
              patch("generate_notes.TranscriptProcessor") as mock_tp, \
              patch("generate_notes.LLMGenerator") as mock_llm, \
-             patch("generate_notes.CostTracker"), \
+             patch("generate_notes.CostTracker") as mock_ct, \
              patch("generate_notes.FrontmatterGenerator") as mock_fm, \
-             patch("generate_notes.MarkdownValidator"):
+             patch("generate_notes.MarkdownValidator") as mock_mv:
 
             mock_cm.return_value.find_transcript.return_value = transcript
             mock_tp.return_value.process.return_value = Mock(
@@ -82,6 +82,8 @@ class TestProcessLectureUrlFetching:
                 error_message=None
             )
             mock_fm.return_value.generate_frontmatter.return_value = "---\ntitle: test\n---\n"
+            mock_mv.return_value.is_valid_markdown.return_value = (True, [])
+            mock_ct.return_value.alert_if_over_budget.return_value = (False, "")
 
             vault = tmp_path / "vault"
             vault.mkdir()
@@ -105,9 +107,9 @@ class TestProcessLectureUrlFetching:
              patch("generate_notes.fetch_url_to_file") as mock_fetch, \
              patch("generate_notes.TranscriptProcessor") as mock_tp, \
              patch("generate_notes.LLMGenerator") as mock_llm, \
-             patch("generate_notes.CostTracker"), \
+             patch("generate_notes.CostTracker") as mock_ct, \
              patch("generate_notes.FrontmatterGenerator") as mock_fm, \
-             patch("generate_notes.MarkdownValidator"):
+             patch("generate_notes.MarkdownValidator") as mock_mv:
 
             mock_cm.return_value.find_transcript.return_value = transcript
             mock_tp.return_value.process.return_value = Mock(
@@ -120,6 +122,8 @@ class TestProcessLectureUrlFetching:
                 error_message=None
             )
             mock_fm.return_value.generate_frontmatter.return_value = "---\ntitle: test\n---\n"
+            mock_mv.return_value.is_valid_markdown.return_value = (True, [])
+            mock_ct.return_value.alert_if_over_budget.return_value = (False, "")
 
             vault = tmp_path / "vault"
             vault.mkdir()
