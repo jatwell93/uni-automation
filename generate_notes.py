@@ -32,6 +32,7 @@ from src.llm_generator import LLMGenerator, TokenCounter
 from src.obsidian_writer import FrontmatterGenerator, MarkdownValidator
 from src.slide_extractor import SlideExtractor
 from src.transcript_processor import TranscriptProcessor
+from src.url_fetcher import fetch_url_to_file, url_to_filename
 
 logging.basicConfig(
     level=logging.WARNING,  # Suppress verbose src/ logs; print progress directly
@@ -131,6 +132,7 @@ def process_lecture(
     api_key: str,
     vault_path: Path,
     estimate_only: bool,
+    urls: list[str] | None = None,
 ) -> bool:
     """
     Process a single lecture: transcript → LLM → Obsidian.
@@ -154,15 +156,30 @@ def process_lecture(
 
     _print("✓", f"Transcript: {transcript_path}")
 
-    # 2. Gather supplementary context (slides, readings) from the session folder
+    # 2. Fetch external URLs into session folder (if provided)
     session_dir = transcript_path.parent
+    if urls:
+        for url in urls:
+            filename = url_to_filename(url)
+            dest = session_dir / filename
+            if dest.exists():
+                _print("✓", f"URL cached: {filename}")
+            else:
+                _print("→", f"Fetching {url} ...")
+                ok = fetch_url_to_file(url, dest)
+                if ok:
+                    _print("✓", f"Saved: {filename}")
+                else:
+                    _print("~", f"Could not fetch {url} — skipped")
+
+    # 3. Gather supplementary context (slides, readings, fetched URLs) from the session folder
     supplementary_context, found_files = gather_supplementary_context(session_dir)
     if found_files:
         _print("✓", f"Supplementary context: {', '.join(found_files)}")
     else:
         _print("~", "No slides or readings found in session folder (transcript only)")
 
-    # 3. Clean transcript
+    # 4. Clean transcript
     processor = TranscriptProcessor()
     result = processor.process(transcript_path)
 
@@ -180,7 +197,7 @@ def process_lecture(
         f"(from {result.original_word_count:,})",
     )
 
-    # 4. Cost estimate (transcript + supplementary context)
+    # 5. Cost estimate (transcript + supplementary context)
     token_counter = TokenCounter()
     input_tokens = token_counter.count_tokens(transcript_text + supplementary_context)
     estimated_cost = estimate_cost(input_tokens, 600, model)
@@ -192,7 +209,7 @@ def process_lecture(
     if estimate_only:
         return True
 
-    # 5. Generate notes
+    # 6. Generate notes
     _print("→", f"Calling {model}...")
     generator = LLMGenerator({"openrouter_api_key": api_key})
     llm_result = generator.generate_notes(transcript_text, supplementary_context, model)
@@ -207,7 +224,7 @@ def process_lecture(
         f"{llm_result.output_tokens:,} output tokens",
     )
 
-    # 6. Build complete note (frontmatter + content)
+    # 7. Build complete note (frontmatter + content)
     fm_gen = FrontmatterGenerator()
     frontmatter = fm_gen.generate_frontmatter(
         {
@@ -222,11 +239,15 @@ def process_lecture(
 
     # Validate markdown (warn only — LLM output may vary slightly)
     validator = MarkdownValidator()
-    is_valid, issues = validator.is_valid_markdown(complete_note)
+    validation_result = validator.is_valid_markdown(complete_note)
+    try:
+        is_valid, issues = validation_result
+    except (TypeError, ValueError):
+        is_valid, issues = True, []
     if not is_valid:
         _print("~", f"Markdown validation warnings: {', '.join(issues)}")
 
-    # 7. Write to Obsidian vault
+    # 8. Write to Obsidian vault
     note_dir = vault_path / "Lectures" / course_code
     note_dir.mkdir(parents=True, exist_ok=True)
 
@@ -246,7 +267,7 @@ def process_lecture(
         _print("✗", f"Failed to write note: {e}")
         return False
 
-    # 8. Track cost
+    # 9. Track cost
     tracker = CostTracker()
     tracker.log_lecture(
         lecture_name=label,
@@ -256,8 +277,13 @@ def process_lecture(
         cost_aud=llm_result.cost_aud,
     )
 
-    over_budget, budget_msg = tracker.alert_if_over_budget(llm_result.cost_aud)
-    print(f"  {budget_msg}")
+    budget_result = tracker.alert_if_over_budget(llm_result.cost_aud)
+    try:
+        over_budget, budget_msg = budget_result
+    except (TypeError, ValueError):
+        over_budget, budget_msg = False, ""
+    if budget_msg:
+        print(f"  {budget_msg}")
 
     return True
 
@@ -299,6 +325,13 @@ Examples:
         "--estimate-only",
         action="store_true",
         help="Show cost estimate without calling the API",
+    )
+    parser.add_argument(
+        "--urls",
+        nargs="*",
+        default=[],
+        metavar="URL",
+        help="External URLs to fetch and include as reading context (space-separated)",
     )
 
     args = parser.parse_args()
@@ -353,6 +386,7 @@ Examples:
             api_key=api_key,
             vault_path=vault_path,
             estimate_only=args.estimate_only,
+            urls=args.urls,
         )
         if ok:
             successes += 1
