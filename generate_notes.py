@@ -30,6 +30,7 @@ from src.cost_tracker import CostTracker, estimate_cost
 from src.course_manager import CourseManager
 from src.llm_generator import LLMGenerator, TokenCounter
 from src.obsidian_writer import FrontmatterGenerator, MarkdownValidator
+from src.slide_extractor import SlideExtractor
 from src.transcript_processor import TranscriptProcessor
 
 logging.basicConfig(
@@ -69,6 +70,59 @@ def _parse_week_range(value: str) -> list[int]:
         )
 
 
+def gather_supplementary_context(session_dir: Path) -> tuple[str, list[str]]:
+    """
+    Collect slides and extra reading files from the session folder.
+
+    Looks for:
+    - slides.pdf       → labelled SLIDES (listed first)
+    - any other .pdf   → labelled READING: <filename>
+    - any extra .txt   → labelled NOTES: <filename> (skips transcript.*)
+
+    Returns:
+        (combined_context_string, list_of_found_filenames)
+    """
+    SKIP_NAMES = {"transcript.txt", "transcript.vtt"}
+    extractor = SlideExtractor()
+    sections: list[str] = []
+    found: list[str] = []
+
+    # Collect PDFs: slides.pdf first, then everything else
+    pdfs = sorted(session_dir.glob("*.pdf"), key=lambda p: (p.name != "slides.pdf", p.name))
+    for pdf in pdfs:
+        label = "SLIDES" if pdf.name == "slides.pdf" else f"READING: {pdf.name}"
+        result = extractor.extract_slide_text(pdf)
+        if result.status == "success" and result.slide_text:
+            sections.append(f"--- {label} ---\n{result.slide_text}")
+            found.append(pdf.name)
+        else:
+            found.append(f"{pdf.name} (unreadable — skipped)")
+
+    # Extra .txt files (not transcript)
+    for txt in sorted(session_dir.glob("*.txt")):
+        if txt.name.lower() in SKIP_NAMES:
+            continue
+        try:
+            content = txt.read_text(encoding="utf-8", errors="replace").strip()
+            if content:
+                sections.append(f"--- NOTES: {txt.name} ---\n{content}")
+                found.append(txt.name)
+        except OSError:
+            found.append(f"{txt.name} (unreadable — skipped)")
+
+    # Fetched URL content saved as .md files by url_fetcher
+    for md in sorted(session_dir.glob("*.md")):
+        try:
+            content = md.read_text(encoding="utf-8", errors="replace").strip()
+            if content:
+                sections.append(f"--- READING: {md.name} ---\n{content}")
+                found.append(md.name)
+        except OSError:
+            found.append(f"{md.name} (unreadable — skipped)")
+
+    return "\n\n".join(sections), found
+
+
 def process_lecture(
     course_code: str,
     week: int,
@@ -100,7 +154,15 @@ def process_lecture(
 
     _print("✓", f"Transcript: {transcript_path}")
 
-    # 2. Clean transcript
+    # 2. Gather supplementary context (slides, readings) from the session folder
+    session_dir = transcript_path.parent
+    supplementary_context, found_files = gather_supplementary_context(session_dir)
+    if found_files:
+        _print("✓", f"Supplementary context: {', '.join(found_files)}")
+    else:
+        _print("~", "No slides or readings found in session folder (transcript only)")
+
+    # 3. Clean transcript
     processor = TranscriptProcessor()
     result = processor.process(transcript_path)
 
@@ -118,9 +180,9 @@ def process_lecture(
         f"(from {result.original_word_count:,})",
     )
 
-    # 3. Cost estimate
+    # 4. Cost estimate (transcript + supplementary context)
     token_counter = TokenCounter()
-    input_tokens = token_counter.count_tokens(transcript_text)
+    input_tokens = token_counter.count_tokens(transcript_text + supplementary_context)
     estimated_cost = estimate_cost(input_tokens, 600, model)
     print(
         f"  Cost estimate: {input_tokens:,} tokens -> AUD ${estimated_cost:.4f} "
@@ -130,10 +192,10 @@ def process_lecture(
     if estimate_only:
         return True
 
-    # 4. Generate notes
+    # 5. Generate notes
     _print("→", f"Calling {model}...")
     generator = LLMGenerator({"openrouter_api_key": api_key})
-    llm_result = generator.generate_notes(transcript_text, "", model)
+    llm_result = generator.generate_notes(transcript_text, supplementary_context, model)
 
     if llm_result.status != "success":
         _print("✗", f"LLM generation failed: {llm_result.error_message}")
@@ -145,7 +207,7 @@ def process_lecture(
         f"{llm_result.output_tokens:,} output tokens",
     )
 
-    # 5. Build complete note (frontmatter + content)
+    # 6. Build complete note (frontmatter + content)
     fm_gen = FrontmatterGenerator()
     frontmatter = fm_gen.generate_frontmatter(
         {
@@ -164,7 +226,7 @@ def process_lecture(
     if not is_valid:
         _print("~", f"Markdown validation warnings: {', '.join(issues)}")
 
-    # 6. Write to Obsidian vault
+    # 7. Write to Obsidian vault
     note_dir = vault_path / "Lectures" / course_code
     note_dir.mkdir(parents=True, exist_ok=True)
 
@@ -184,7 +246,7 @@ def process_lecture(
         _print("✗", f"Failed to write note: {e}")
         return False
 
-    # 7. Track cost
+    # 8. Track cost
     tracker = CostTracker()
     tracker.log_lecture(
         lecture_name=label,
