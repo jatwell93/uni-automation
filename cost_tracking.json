@@ -1,0 +1,21 @@
+{
+  "lectures": [
+    {
+      "lecture": "MIS271 Week 01 lecture",
+      "timestamp": "2026-03-05T20:47:23.024772",
+      "input_tokens": 10772,
+      "output_tokens": 600,
+      "model": "deepseek/deepseek-chat",
+      "cost_aud": 0.003268
+    },
+    {
+      "lecture": "MIS271 Week 01 lecture",
+      "timestamp": "2026-03-05T20:51:45.461847",
+      "input_tokens": 10772,
+      "output_tokens": 600,
+      "model": "deepseek/deepseek-chat",
+      "cost_aud": 0.003268
+    }
+  ],
+  "weekly_total": 0.006536
+}
