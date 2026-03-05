@@ -19,7 +19,7 @@ _HEADERS = {
 def url_to_filename(url: str) -> str:
     """Convert a URL to a safe filename: reading_{domain}_{path-slug}.md"""
     parsed = urlparse(url)
-    domain = parsed.netloc.lstrip("www.")
+    domain = parsed.netloc.removeprefix("www.")
     path = re.sub(r"[^a-zA-Z0-9]+", "-", parsed.path.strip("/")).strip("-")
     name = f"{domain}_{path}" if path else domain
     name = name[:120]
@@ -50,5 +50,8 @@ def fetch_url_to_file(url: str, dest_path: Path) -> bool:
     if not markdown:
         return False
 
-    dest_path.write_text(markdown, encoding="utf-8")
+    try:
+        dest_path.write_text(markdown, encoding="utf-8")
+    except OSError:
+        return False
     return True

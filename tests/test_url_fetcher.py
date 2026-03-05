@@ -18,8 +18,9 @@ class TestUrlToFilename:
         assert "olap" in result
 
     def test_strips_www(self):
-        assert url_to_filename("https://www.example.com/article") == \
-               url_to_filename("https://example.com/article")
+        result = url_to_filename("https://www.example.com/article")
+        assert result == "reading_example.com_article.md"
+        assert "www" not in result
 
     def test_simple_url(self):
         result = url_to_filename("https://example.com/article")
@@ -110,3 +111,14 @@ class TestFetchUrlToFile:
             result = fetch_url_to_file("https://example.com", dest)
 
         assert result is False
+
+    def test_missing_parent_directory_returns_false(self, tmp_path):
+        dest = tmp_path / "nonexistent_dir" / "reading_test.md"
+        mock_resp = Mock(text=self.SAMPLE_HTML)
+        mock_resp.raise_for_status = Mock()
+
+        with patch("requests.get", return_value=mock_resp):
+            result = fetch_url_to_file("https://example.com", dest)
+
+        assert result is False
+        assert not dest.exists()
